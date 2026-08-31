@@ -87,7 +87,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (_isApple) {
       return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
-          backgroundColor: StarbucksColors.darkGreen.withOpacity(0.85),
+          backgroundColor: StarbucksColors.darkGreen.withValues(alpha: 0.85),
           leading: screenWidth < 1000
               ? CupertinoButton(
                   padding: EdgeInsets.zero,
@@ -141,7 +141,6 @@ class _DashboardPageState extends State<DashboardPage> {
   // RESPONSIVE WIREFRAME LAYOUTS
   // ---------------------------------------------------------------------------
 
-  // DESKTOP: Left Navigation + Central Storefront + Right Live Order Panel
   Widget _buildDesktopLayout() {
     return Row(
       children: [
@@ -180,7 +179,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // TABLET: Storefront Grid + Scrollable Cart Section
   Widget _buildTabletLayout() {
     return ListView(
       padding: const EdgeInsets.all(16.0),
@@ -196,7 +194,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // MOBILE: Vertical Single Column Layout + Native Tab Bar
   Widget _buildMobileLayout() {
     return ListView(
       padding: const EdgeInsets.all(12.0),
@@ -247,7 +244,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   height: 8,
                   width: 180,
                   decoration: BoxDecoration(
-                    color: StarbucksColors.darkGreen.withOpacity(0.5),
+                    color: StarbucksColors.darkGreen.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -545,9 +542,9 @@ class GlassContainer extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.55),
+              color: color.withValues(alpha: 0.55),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.4)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
             ),
             child: child,
           ),
