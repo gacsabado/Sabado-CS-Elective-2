@@ -5,7 +5,14 @@ import '../services/pokemon_service.dart';
 import '../widgets/pokemon_card.dart';
 
 class PokedexScreen extends StatefulWidget {
-  const PokedexScreen({super.key});
+  final bool isDarkMode;
+  final VoidCallback onThemeToggle;
+
+  const PokedexScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onThemeToggle,
+  });
 
   @override
   State<PokedexScreen> createState() => _PokedexScreenState();
@@ -19,7 +26,6 @@ class _PokedexScreenState extends State<PokedexScreen> {
   @override
   void initState() {
     super.initState();
-
     _pokemonFuture = _pokemonService.fetchPokemon();
   }
 
@@ -33,14 +39,37 @@ class _PokedexScreenState extends State<PokedexScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDarkMode;
+
+    final backgroundColor = isDark
+        ? const Color(0xFF111318)
+        : const Color(0xFFF7F8FC);
+
+    final primaryText = isDark
+        ? Colors.white
+        : const Color(0xFF202124);
+
+    final secondaryText = isDark
+        ? Colors.white60
+        : Colors.black54;
+
+    final iconBackground = isDark
+        ? const Color(0xFF1D2027)
+        : Colors.white;
+
     return Scaffold(
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
+          color: const Color(0xFFEF5350),
           onRefresh: _refreshPokemon,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Header
+
+              // =========================
+              // HEADER
+              // =========================
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -51,12 +80,15 @@ class _PokedexScreenState extends State<PokedexScreen> {
                   ),
                   child: Row(
                     children: [
+
+                      // Pokéball icon
                       Container(
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
                           color: const Color(0xFFEF5350),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius:
+                              BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
                               color: const Color(0xFFEF5350)
@@ -75,7 +107,8 @@ class _PokedexScreenState extends State<PokedexScreen> {
 
                       const SizedBox(width: 15),
 
-                      const Expanded(
+                      // Title
+                      Expanded(
                         child: Column(
                           crossAxisAlignment:
                               CrossAxisAlignment.start,
@@ -86,36 +119,41 @@ class _PokedexScreenState extends State<PokedexScreen> {
                                 fontSize: 30,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: -1,
+                                color: primaryText,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
                               'Explore the Pokémon world',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.black54,
+                                color: secondaryText,
                               ),
                             ),
                           ],
                         ),
                       ),
 
-                      Container(
-                        padding: const EdgeInsets.all(11),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 10,
+                      // Dark / Light mode
+                      Material(
+                        color: iconBackground,
+                        borderRadius:
+                            BorderRadius.circular(15),
+                        child: InkWell(
+                          borderRadius:
+                              BorderRadius.circular(15),
+                          onTap: widget.onThemeToggle,
+                          child: Padding(
+                            padding: const EdgeInsets.all(11),
+                            child: Icon(
+                              isDark
+                                  ? Icons.light_mode_rounded
+                                  : Icons.dark_mode_rounded,
+                              color: isDark
+                                  ? const Color(0xFFFFD54F)
+                                  : const Color(0xFF5C6BC0),
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.grid_view_rounded,
-                          color: Color(0xFFEF5350),
+                          ),
                         ),
                       ),
                     ],
@@ -123,7 +161,9 @@ class _PokedexScreenState extends State<PokedexScreen> {
                 ),
               ),
 
-              // Section title
+              // =========================
+              // SECTION TITLE
+              // =========================
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -134,14 +174,17 @@ class _PokedexScreenState extends State<PokedexScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         'Pokémon',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
+                          color: primaryText,
                         ),
                       ),
+
                       const Spacer(),
+
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -149,8 +192,11 @@ class _PokedexScreenState extends State<PokedexScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEF5350)
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
+                              .withValues(
+                            alpha: isDark ? 0.18 : 0.1,
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(20),
                         ),
                         child: const Text(
                           '30 Pokémon',
@@ -166,10 +212,16 @@ class _PokedexScreenState extends State<PokedexScreen> {
                 ),
               ),
 
-              // Pokémon Grid
+              // =========================
+              // FUTURE BUILDER
+              // =========================
               FutureBuilder<List<Pokemon>>(
                 future: _pokemonFuture,
                 builder: (context, snapshot) {
+
+                  // =========================
+                  // LOADING STATE
+                  // =========================
                   if (snapshot.connectionState ==
                       ConnectionState.waiting) {
                     return const SliverFillRemaining(
@@ -181,6 +233,9 @@ class _PokedexScreenState extends State<PokedexScreen> {
                     );
                   }
 
+                  // =========================
+                  // ERROR STATE
+                  // =========================
                   if (snapshot.hasError) {
                     return SliverFillRemaining(
                       child: Center(
@@ -190,31 +245,43 @@ class _PokedexScreenState extends State<PokedexScreen> {
                             mainAxisAlignment:
                                 MainAxisAlignment.center,
                             children: [
-                              const Icon(
+
+                              Icon(
                                 Icons.cloud_off_rounded,
-                                size: 60,
-                                color: Colors.black26,
+                                size: 65,
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.black26,
                               ),
+
                               const SizedBox(height: 16),
-                              const Text(
+
+                              Text(
                                 'Oops!',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w800,
+                                  color: primaryText,
                                 ),
                               ),
+
                               const SizedBox(height: 8),
-                              const Text(
+
+                              Text(
                                 'We could not load the Pokémon.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.black54,
+                                  color: secondaryText,
                                 ),
                               ),
+
                               const SizedBox(height: 20),
+
                               ElevatedButton(
                                 onPressed: _refreshPokemon,
-                                child: const Text('Try Again'),
+                                child: const Text(
+                                  'Try Again',
+                                ),
                               ),
                             ],
                           ),
@@ -223,8 +290,70 @@ class _PokedexScreenState extends State<PokedexScreen> {
                     );
                   }
 
+                  // Get data
                   final pokemon = snapshot.data ?? [];
 
+                  // =========================
+                  // EMPTY STATE
+                  // =========================
+                  if (pokemon.isEmpty) {
+                    return SliverFillRemaining(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(30),
+                          child: Column(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
+                            children: [
+
+                              Icon(
+                                Icons.catching_pokemon,
+                                size: 75,
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.black26,
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              Text(
+                                'No Pokémon found',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryText,
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              Text(
+                                'There are no Pokémon to display right now.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: secondaryText,
+                                ),
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              ElevatedButton(
+                                onPressed: _refreshPokemon,
+                                child: const Text(
+                                  'Try Again',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // =========================
+                  // SUCCESS STATE
+                  // =========================
                   return SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
                       20,
@@ -233,20 +362,24 @@ class _PokedexScreenState extends State<PokedexScreen> {
                       30,
                     ),
                     sliver: SliverGrid(
-                      delegate: SliverChildBuilderDelegate(
+                      delegate:
+                          SliverChildBuilderDelegate(
                         (context, index) {
                           return PokemonCard(
                             pokemon: pokemon[index],
+                            isDarkMode: isDark,
                           );
                         },
                         childCount: pokemon.length,
                       ),
+
+                      // 3 COLUMNS
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.82,
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.72,
                       ),
                     ),
                   );
