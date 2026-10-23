@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/pokemon.dart';
+import '../providers/pokemon_provider.dart';
 
-class PokemonCard extends StatelessWidget {
+class PokemonCard extends ConsumerWidget {
   final Pokemon pokemon;
   final bool isDarkMode;
   final VoidCallback? onTap;
@@ -26,57 +28,46 @@ class PokemonCard extends StatelessWidget {
         return isDarkMode
             ? const Color(0xFF42221C)
             : const Color(0xFFFFE4DC);
-
       case 'water':
         return isDarkMode
             ? const Color(0xFF192F46)
             : const Color(0xFFE0F2FF);
-
       case 'grass':
         return isDarkMode
             ? const Color(0xFF1D3825)
             : const Color(0xFFE4F5E7);
-
       case 'electric':
         return isDarkMode
             ? const Color(0xFF403717)
             : const Color(0xFFFFF4C7);
-
       case 'psychic':
         return isDarkMode
             ? const Color(0xFF402333)
             : const Color(0xFFFFE4EF);
-
       case 'ice':
         return isDarkMode
             ? const Color(0xFF1C3740)
             : const Color(0xFFE1F7FA);
-
       case 'poison':
         return isDarkMode
             ? const Color(0xFF342044)
             : const Color(0xFFF0E1FA);
-
       case 'ground':
         return isDarkMode
             ? const Color(0xFF3D321F)
             : const Color(0xFFF5E8C8);
-
       case 'rock':
         return isDarkMode
             ? const Color(0xFF363329)
             : const Color(0xFFEDE8D9);
-
       case 'ghost':
         return isDarkMode
             ? const Color(0xFF29223C)
             : const Color(0xFFE9E2FA);
-
       case 'dragon':
         return isDarkMode
             ? const Color(0xFF202B4C)
             : const Color(0xFFE2E8FF);
-
       default:
         return isDarkMode
             ? const Color(0xFF252830)
@@ -167,26 +158,26 @@ class PokemonCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(pokemonProvider);
+    final notifier = ref.read(pokemonProvider.notifier);
+    final isFav = state.favoriteIds.contains(pokemon.id);
+
     final textColor =
         isDarkMode ? Colors.white : const Color(0xFF202124);
-
     final idColor =
         isDarkMode ? Colors.white54 : Colors.black45;
 
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(28),
-
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(28),
-
         child: Ink(
           decoration: BoxDecoration(
             color: _getCardColor(),
             borderRadius: BorderRadius.circular(28),
-
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(
@@ -197,25 +188,17 @@ class PokemonCard extends StatelessWidget {
               ),
             ],
           ),
-
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
-
             child: Stack(
               children: [
-
-                // ==========================================
                 // DECORATIVE CIRCLE
-                // ==========================================
-
                 Positioned(
                   right: -35,
                   top: -35,
-
                   child: Container(
                     width: 145,
                     height: 145,
-
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(
                         alpha: isDarkMode ? 0.06 : 0.45,
@@ -225,90 +208,74 @@ class PokemonCard extends StatelessWidget {
                   ),
                 ),
 
-                // ==========================================
-                // SMALL DECORATIVE CIRCLE
-                // ==========================================
-
+                // FAVORITE HEART INDICATOR
                 Positioned(
-                  right: 25,
-                  top: 75,
-
-                  child: Container(
-                    width: 28,
-                    height: 28,
-
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(
-                        alpha: isDarkMode ? 0.07 : 0.3,
+                  right: 8,
+                  top: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      notifier.toggleFavorite(pokemon.id);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(
+                          alpha: isDarkMode ? 0.2 : 0.7,
+                        ),
+                        shape: BoxShape.circle,
                       ),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-
-                // ==========================================
-                // POKEBALL DECORATION
-                // ==========================================
-
-                Positioned(
-                  right: 18,
-                  top: 18,
-
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: 0.13,
-
                       child: Icon(
-                        Icons.catching_pokemon,
-                        size: 78,
-
-                        color: isDarkMode
-                            ? Colors.white
-                            : Colors.black,
+                        isFav
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        size: 18,
+                        color: isFav
+                            ? const Color(0xFFEF5350)
+                            : (isDarkMode ? Colors.white70 : Colors.black54),
                       ),
                     ),
                   ),
                 ),
 
-                // ==========================================
-                // CONTENT
-                // ==========================================
-
+                // CARD CONTENT
                 Padding(
                   padding: const EdgeInsets.all(14),
-
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      // ID
                       Text(
                         '#${pokemon.id.toString().padLeft(3, '0')}',
-
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: idColor,
                         ),
                       ),
-
                       const SizedBox(height: 3),
 
-                      // NAME
+                      // DISPLAY NICKNAME OR ORIGINAL NAME
                       Text(
-                        pokemon.name,
-
+                        pokemon.nickname ?? pokemon.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: textColor,
                         ),
                       ),
+
+                      if (pokemon.nickname != null)
+                        Text(
+                          '(${pokemon.name})',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                            color: idColor,
+                          ),
+                        ),
 
                       const SizedBox(height: 6),
 
@@ -318,54 +285,31 @@ class PokemonCard extends StatelessWidget {
                           children: pokemon.types
                               .map(
                                 (type) => Padding(
-                                  padding:
-                                      const EdgeInsets.only(
-                                    right: 5,
-                                  ),
-
+                                  padding: const EdgeInsets.only(right: 5),
                                   child: Container(
-                                    padding:
-                                        const EdgeInsets
-                                            .symmetric(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 7,
                                       vertical: 4,
                                     ),
-
-                                    decoration:
-                                        BoxDecoration(
-                                      color:
-                                          _getTypeColor(type),
-
-                                      borderRadius:
-                                          BorderRadius
-                                              .circular(20),
+                                    decoration: BoxDecoration(
+                                      color: _getTypeColor(type),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-
                                     child: Row(
-                                      mainAxisSize:
-                                          MainAxisSize.min,
-
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
                                           _getTypeIcon(type),
                                           size: 10,
                                           color: Colors.white,
                                         ),
-
-                                        const SizedBox(
-                                          width: 3,
-                                        ),
-
+                                        const SizedBox(width: 3),
                                         Text(
                                           type,
-
-                                          style:
-                                              const TextStyle(
-                                            color:
-                                                Colors.white,
+                                          style: const TextStyle(
+                                            color: Colors.white,
                                             fontSize: 9,
-                                            fontWeight:
-                                                FontWeight.w700,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                       ],
@@ -381,37 +325,18 @@ class PokemonCard extends StatelessWidget {
                         child: Center(
                           child: Image.network(
                             pokemon.imageUrl,
-
                             fit: BoxFit.contain,
-
-                            loadingBuilder:
-                                (
-                                  context,
-                                  child,
-                                  progress,
-                                ) {
-                              if (progress == null) {
-                                return child;
-                              }
-
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
                               return const CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color:
-                                    Color(0xFFEF5350),
+                                color: Color(0xFFEF5350),
                               );
                             },
-
-                            errorBuilder:
-                                (
-                                  context,
-                                  error,
-                                  stackTrace,
-                                ) {
+                            errorBuilder: (context, error, stackTrace) {
                               return Icon(
-                                Icons
-                                    .image_not_supported_outlined,
+                                Icons.image_not_supported_outlined,
                                 size: 45,
-
                                 color: isDarkMode
                                     ? Colors.white24
                                     : Colors.black26,

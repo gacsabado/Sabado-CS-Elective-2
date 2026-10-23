@@ -1,33 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/pokemon_provider.dart';
 import 'screens/pokedex_screen.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => PokemonProvider(),
-      child: const PokemonApp(),
+    const ProviderScope(
+      child: PokemonApp(),
     ),
   );
 }
 
-class PokemonApp extends StatelessWidget {
+class PokemonApp extends ConsumerWidget {
   const PokemonApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<PokemonProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(pokemonProvider);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Pokédex',
-
-      themeMode: provider.isDarkMode
-          ? ThemeMode.dark
-          : ThemeMode.light,
-
+      themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: const Color(0xFFF7F8FC),
@@ -37,7 +32,6 @@ class PokemonApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF111318),
@@ -47,7 +41,6 @@ class PokemonApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-
       home: const PokedexScreen(),
     );
   }

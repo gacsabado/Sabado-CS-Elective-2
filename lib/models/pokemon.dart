@@ -3,13 +3,31 @@ class Pokemon {
   final String name;
   final String imageUrl;
   final List<String> types;
+  final String? nickname;
 
   Pokemon({
     required this.id,
     required this.name,
     required this.imageUrl,
     required this.types,
+    this.nickname,
   });
+
+  Pokemon copyWith({
+    int? id,
+    String? name,
+    String? imageUrl,
+    List<String>? types,
+    String? nickname,
+  }) {
+    return Pokemon(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      imageUrl: imageUrl ?? this.imageUrl,
+      types: types ?? this.types,
+      nickname: nickname ?? this.nickname,
+    );
+  }
 
   factory Pokemon.fromListJson(Map<String, dynamic> json) {
     final url = json['url'] as String;

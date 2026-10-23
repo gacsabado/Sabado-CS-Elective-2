@@ -1,5 +1,5 @@
 name: pokemon
-description: "Asynch Activty."
+description: "midterm exam"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -34,6 +34,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.5.0
   provider: ^6.1.5+1
+  flutter_riverpod: ^2.5.1
 
 dev_dependencies:
   flutter_test:
