@@ -17,13 +17,6 @@ class TypeFilterBar extends ConsumerWidget {
     'Normal',
     'Ground',
     'Rock',
-    'Psychic',
-    'Ice',
-    'Dragon',
-    'Ghost',
-    'Steel',
-    'Dark',
-    'Fairy',
   ];
 
   @override

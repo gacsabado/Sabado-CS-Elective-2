@@ -159,10 +159,32 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
       backgroundColor: background,
       body: Stack(
         children: [
+          // BACKGROUND POKÉBALL PATTERNS
+          Positioned(
+            top: -100,
+            right: -90,
+            child: _BackgroundPokeball(
+              color: typeColor,
+              size: 330,
+              opacity: isDark ? 0.08 : 0.07,
+            ),
+          ),
+          Positioned(
+            bottom: 100,
+            left: -160,
+            child: _BackgroundPokeball(
+              color: typeColor,
+              size: 350,
+              opacity: isDark ? 0.05 : 0.04,
+            ),
+          ),
+
+          // MAIN CONTENT
           SafeArea(
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
+                // HEADER BAR
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 15, 18, 0),
@@ -175,7 +197,29 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                         ),
                         const Spacer(),
 
-                        // FAVORITE HEART TOGGLE
+                        // POKÉDEX BRAND
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.catching_pokemon,
+                              color: typeColor,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'POKÉDEX',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2,
+                                color: textColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+
+                        // FAVORITE BUTTON
                         _RoundButton(
                           icon: isFav
                               ? Icons.favorite_rounded
@@ -214,12 +258,12 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                   ),
                 ),
 
-                // POKÉMON IMAGE CONTAINER
+                // IMAGE CARD
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
                     child: Container(
-                      height: 380,
+                      height: 420,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(38),
                         gradient: LinearGradient(
@@ -229,6 +273,9 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                             typeColor.withValues(
                               alpha: isDark ? 0.30 : 0.20,
                             ),
+                            typeColor.withValues(
+                              alpha: isDark ? 0.10 : 0.06,
+                            ),
                             cardColor,
                           ],
                         ),
@@ -237,15 +284,88 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                             alpha: isDark ? 0.25 : 0.12,
                           ),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: typeColor.withValues(
+                              alpha: isDark ? 0.12 : 0.08,
+                            ),
+                            blurRadius: 35,
+                            offset: const Offset(0, 18),
+                          ),
+                        ],
                       ),
                       child: Stack(
                         children: [
+                          Positioned(
+                            top: -80,
+                            right: -60,
+                            child: _BackgroundPokeball(
+                              color: typeColor,
+                              size: 250,
+                              opacity: 0.10,
+                            ),
+                          ),
+                          Positioned(
+                            top: 40,
+                            left: 35,
+                            child: _Dot(
+                              color: typeColor,
+                              size: 10,
+                            ),
+                          ),
+                          Positioned(
+                            top: 70,
+                            left: 60,
+                            child: _Dot(
+                              color: typeColor,
+                              size: 5,
+                            ),
+                          ),
+                          Positioned(
+                            top: 105,
+                            right: 70,
+                            child: _Dot(
+                              color: typeColor,
+                              size: 7,
+                            ),
+                          ),
+
+                          // IMAGE
                           Center(
-                            child: Image.network(
-                              pokemon.imageUrl,
-                              width: 280,
-                              height: 280,
-                              fit: BoxFit.contain,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 35),
+                              child: Image.network(
+                                pokemon.imageUrl,
+                                width: 300,
+                                height: 300,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.image_not_supported_rounded,
+                                    size: 90,
+                                    color: typeColor,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+
+                          // TYPE BADGES ON IMAGE
+                          Positioned(
+                            bottom: 22,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: pokemon.types
+                                  .map(
+                                    (type) => _TypeBadge(
+                                      type: type,
+                                      color: getTypeColor(type),
+                                      icon: getTypeIcon(type),
+                                    ),
+                                  )
+                                  .toList(),
                             ),
                           ),
                         ],
@@ -254,40 +374,56 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                   ),
                 ),
 
-                // NAME & NICKNAME DISPLAY
+                // TITLE & NAME
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 27, 20, 0),
                     child: Column(
                       children: [
                         Text(
                           pokemon.nickname ?? pokemon.name,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 36,
+                            fontSize: 40,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -1.5,
                             color: textColor,
                           ),
                         ),
-                        if (pokemon.nickname != null)
+                        if (pokemon.nickname != null) ...[
+                          const SizedBox(height: 2),
                           Text(
-                            'Original Name: ${pokemon.name}',
+                            'Original: ${pokemon.name}',
                             style: TextStyle(
                               fontSize: 14,
                               fontStyle: FontStyle.italic,
                               color: mutedText,
                             ),
                           ),
+                        ],
                         const SizedBox(height: 5),
-                        Text(
-                          'POKÉMON #${pokemon.id.toString().padLeft(3, '0')}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.3,
-                            color: mutedText,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: typeColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'POKÉMON #${pokemon.id.toString().padLeft(3, '0')}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.3,
+                                color: mutedText,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -297,7 +433,7 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                 // NICKNAME EDITOR SECTION
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 24, 18, 30),
+                    padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -322,7 +458,7 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                           TextField(
                             controller: _nicknameController,
                             decoration: InputDecoration(
-                              hintText: 'Enter nickname...',
+                              hintText: 'Enter custom nickname...',
                               filled: true,
                               fillColor: isDark
                                   ? const Color(0xFF080B12)
@@ -353,16 +489,14 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color(0xFFEF5350),
+                                    backgroundColor: const Color(0xFFEF5350),
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   icon: const Icon(Icons.save_rounded),
-                                  label: const Text('Save'),
+                                  label: const Text('Save Nickname'),
                                 ),
                               ),
                               if (pokemon.nickname != null) ...[
@@ -383,8 +517,7 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.redAccent,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   icon: const Icon(Icons.delete_rounded),
@@ -398,10 +531,152 @@ class _PokemonDetailsPageState extends ConsumerState<PokemonDetailsPage> {
                     ),
                   ),
                 ),
+
+                // POKÉMON INFO GRID CARDS
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 30, 18, 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pokémon Info',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Basic information from your Pokédex.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: mutedText,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // INFO CARDS
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _InfoCard(
+                                icon: Icons.tag_rounded,
+                                title: 'POKÉDEX ID',
+                                value:
+                                    '#${pokemon.id.toString().padLeft(3, '0')}',
+                                color: typeColor,
+                                isDark: isDark,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _InfoCard(
+                                icon: Icons.catching_pokemon_rounded,
+                                title: 'NAME',
+                                value: pokemon.name,
+                                color: typeColor,
+                                isDark: isDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // TYPE CARD
+                        _LargeInfoCard(
+                          icon: Icons.category_rounded,
+                          title: 'TYPE',
+                          color: typeColor,
+                          isDark: isDark,
+                          child: Row(
+                            children: pokemon.types
+                                .map(
+                                  (type) => _TypeBadge(
+                                    type: type,
+                                    color: getTypeColor(type),
+                                    icon: getTypeIcon(type),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// HELPER WIDGETS
+class _BackgroundPokeball extends StatelessWidget {
+  final Color color;
+  final double size;
+  final double opacity;
+
+  const _BackgroundPokeball({
+    required this.color,
+    required this.size,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: opacity,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: color,
+            width: size * 0.035,
+          ),
+        ),
+        child: Center(
+          child: Container(
+            width: size * 0.20,
+            height: size * 0.20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              border: Border.all(
+                color: color,
+                width: size * 0.025,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final Color color;
+  final double size;
+
+  const _Dot({
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.35),
+        shape: BoxShape.circle,
       ),
     );
   }
@@ -438,6 +713,200 @@ class _RoundButton extends StatelessWidget {
             size: 21,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TypeBadge extends StatelessWidget {
+  final String type;
+  final Color color;
+  final IconData icon;
+
+  const _TypeBadge({
+    required this.type,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 7),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 13,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            type.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final Color color;
+  final bool isDark;
+
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF151923) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: color.withValues(alpha: 0.10),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 15),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.45),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LargeInfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final Color color;
+  final bool isDark;
+
+  const _LargeInfoCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF151923) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: color.withValues(alpha: 0.10),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 13),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.45),
+                ),
+              ),
+              const SizedBox(height: 7),
+              child,
+            ],
+          ),
+        ],
       ),
     );
   }
