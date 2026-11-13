@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -242,25 +243,22 @@ class _SignupScreenState extends State<SignupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 20),
-
-                    // Replace with your actual POP MART logo asset.
-                    Image.asset(
-                      'assets/popmart_logo.png',
+                    // POP MART Logo
+                    SvgPicture.asset(
+                      'assets/Pop_Mart_logo.svg',
                       height: 85,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Text(
-                          'POP MART',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 3,
-                          ),
-                        );
-                      },
+                      placeholderBuilder: (context) => const Text(
+                        'POP MART',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 3,
+                        ),
+                      ),
                     ),
-
+                    
                     const SizedBox(height: 24),
 
                     const Text(
@@ -454,9 +452,9 @@ class _SignupScreenState extends State<SignupScreen> {
                           style: TextStyle(color: Colors.white70),
                         ),
                         TextButton(
-                          onPressed: () => context.go('/'),
+                          onPressed: () => context.go('/signin'),
                           child: const Text(
-                            'Back to Shop',
+                            'Sign In',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),

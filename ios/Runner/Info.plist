@@ -33,7 +33,7 @@
     <string>$(DEVELOPMENT_LANGUAGE)</string>
 
     <key>CFBundleDisplayName</key>
-    <string>Sabado Act1</string>
+    <string>Popmart</string>
 
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
@@ -45,7 +45,7 @@
     <string>6.0</string>
 
     <key>CFBundleName</key>
-    <string>sabado_act1</string>
+    <string>Popmart</string>
 
     <key>CFBundlePackageType</key>
     <string>APPL</string>

@@ -1,5 +1,6 @@
-import 'screens/signup_screen.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,20 +12,26 @@ import 'screens/cart_screen.dart';
 import 'screens/checkout_confirmation_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/product_detail_screen.dart';
-
-const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const supabasePublishableKey =
-    String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+import 'screens/signin_screen.dart';
+import 'screens/signup_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load Supabase credentials from .env
+  await dotenv.load(fileName: '.env');
+
+  final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+  final supabasePublishableKey =
+      dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ?? '';
+
   if (supabaseUrl.isEmpty || supabasePublishableKey.isEmpty) {
     throw StateError(
-      'Please configure your Supabase URL and publishable key.',
+      'Missing Supabase URL or publishable key in .env file.',
     );
   }
 
+  // Initialize Supabase
   await Supabase.initialize(
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
@@ -61,10 +68,17 @@ class _PopMartAppState extends State<PopMartApp> {
           onToggleTheme: _toggleTheme,
         ),
       ),
+
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
       ),
+
+      GoRoute(
+        path: '/signin',
+        builder: (context, state) => const SigninScreen(),
+      ),
+
       GoRoute(
         path: '/product/:id',
         builder: (context, state) {
@@ -84,10 +98,12 @@ class _PopMartAppState extends State<PopMartApp> {
           return ProductDetailScreen(product: product);
         },
       ),
+
       GoRoute(
         path: '/cart',
         builder: (context, state) => const CartScreen(),
       ),
+
       GoRoute(
         path: '/checkout',
         builder: (context, state) =>
@@ -190,10 +206,3 @@ class _PopMartAppState extends State<PopMartApp> {
     );
   }
 }
-/* to run
-
-flutter run \
---dart-define=SUPABASE_URL=https://ynejsslbwuvipvcpsylu.supabase.co \
---dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_CIDD0RCcBt2odb9SOxN4mg_Sd8luHzQ
-
-*/
