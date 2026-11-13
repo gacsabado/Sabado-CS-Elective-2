@@ -3,7 +3,7 @@
     <application
         android:label="Popmart"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="android/app/src/main/res/mipmap-hdpi/app_icon.png">
         <activity
             android:name=".MainActivity"
             android:exported="true"
