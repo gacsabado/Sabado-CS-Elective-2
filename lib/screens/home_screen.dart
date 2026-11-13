@@ -1,9 +1,8 @@
-
+import '../widgets/google_sign_in_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
 import '../providers/product_provider.dart';
 import '../state/cart_state.dart';
 import '../widgets/hero_banner_slider.dart';
@@ -47,6 +46,10 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
+          // GOOGLE SIGN-IN
+          const GoogleSignInButton(),
+
+          // SHOPPING CART
           ListenableBuilder(
             listenable: CartState.instance,
             builder: (context, _) {
@@ -56,7 +59,9 @@ class HomeScreen extends StatelessWidget {
                 isLabelVisible: count > 0,
                 label: Text('$count'),
                 child: IconButton(
-                  icon: const Icon(Icons.shopping_cart_outlined),
+                  icon: const Icon(
+                    Icons.shopping_cart_outlined,
+                  ),
                   onPressed: () => context.go('/cart'),
                   tooltip: 'Shopping Cart',
                 ),
@@ -81,6 +86,7 @@ class HomeScreen extends StatelessWidget {
 
           return CustomScrollView(
             slivers: [
+              // HERO BANNER
               const SliverToBoxAdapter(
                 child: HeroBannerSlider(),
               ),
@@ -90,6 +96,7 @@ class HomeScreen extends StatelessWidget {
                 child: _PriceFilter(),
               ),
 
+              // SECTION TITLE
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -171,7 +178,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final product = provider.products[index];
+                          final product =
+                              provider.products[index];
 
                           return ProductCard(
                             product: product,
@@ -342,12 +350,14 @@ class _PriceFilterState extends State<_PriceFilter> {
                         _selectedRange = values;
                       });
                     },
-              onChangeEnd: (values) {
-                provider.setPriceRange(
-                  values.start,
-                  values.end,
-                );
-              },
+              onChangeEnd: provider.isLoading
+                  ? null
+                  : (values) {
+                      provider.setPriceRange(
+                        values.start,
+                        values.end,
+                      );
+                    },
             ),
 
             Text(
