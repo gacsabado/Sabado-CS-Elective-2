@@ -1,3 +1,4 @@
+import 'screens/signup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +60,10 @@ class _PopMartAppState extends State<PopMartApp> {
           themeMode: _themeMode,
           onToggleTheme: _toggleTheme,
         ),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignupScreen(),
       ),
       GoRoute(
         path: '/product/:id',

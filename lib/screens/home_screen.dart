@@ -1,4 +1,3 @@
-import '../widgets/google_sign_in_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -46,8 +45,14 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          // GOOGLE SIGN-IN
-          const GoogleSignInButton(),
+          //SIGN-IN
+          TextButton(
+            onPressed: () => context.go('/signup'),
+            child: const Text(
+              'Sign Up',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
 
           // SHOPPING CART
           ListenableBuilder(
