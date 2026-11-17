@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../models/cart_item.dart';
-import '../state/cart_state.dart';
+import '../../models/cart_item.dart';
+import '../../state/cart_state.dart';
 
 class CheckoutConfirmationScreen extends StatefulWidget {
   const CheckoutConfirmationScreen({super.key});

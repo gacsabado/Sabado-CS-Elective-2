@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../state/cart_state.dart';
+import '../../state/cart_state.dart';
 
 /// Stateful Widget: Handles dynamic state changes such as incrementing, decrementing, and recalculating subtotals live.
 class CartScreen extends StatefulWidget {

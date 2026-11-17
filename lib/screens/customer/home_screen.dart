@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../providers/product_provider.dart';
-import '../state/cart_state.dart';
-import '../widgets/hero_banner_slider.dart';
-import '../widgets/product_card.dart';
+import '../../providers/product_provider.dart';
+import '../../state/cart_state.dart';
+import '../../widgets/hero_banner_slider.dart';
+import '../../widgets/product_card.dart';
 
 class HomeScreen extends StatelessWidget {
   final ThemeMode themeMode;

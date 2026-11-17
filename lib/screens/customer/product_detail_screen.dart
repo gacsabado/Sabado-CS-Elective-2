@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../models/product.dart';
-import '../state/cart_state.dart';
+import '../../models/product.dart';
+import '../../state/cart_state.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;

@@ -8,12 +8,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data/mock_data.dart';
 import 'models/product.dart';
 import 'providers/product_provider.dart';
-import 'screens/cart_screen.dart';
-import 'screens/checkout_confirmation_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/product_detail_screen.dart';
-import 'screens/signin_screen.dart';
-import 'screens/signup_screen.dart';
+import 'screens/customer/cart_screen.dart';
+import 'screens/customer/checkout_confirmation_screen.dart';
+import 'screens/customer/home_screen.dart';
+import 'screens/customer/product_detail_screen.dart';
+import 'screens/auth/signin_screen.dart';
+import 'screens/auth/signup_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
