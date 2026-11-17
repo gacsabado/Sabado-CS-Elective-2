@@ -1,4 +1,4 @@
-
+import '../widgets/success_notification.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -38,8 +38,9 @@ class _SigninScreenState extends State<SigninScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Welcome back!')),
+      showSuccessNotification(
+        context,
+        message: 'Successfully signed in! Welcome back.',
       );
 
       context.go('/');
@@ -112,8 +113,9 @@ class _SigninScreenState extends State<SigninScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Google sign-in successful!')),
+      showSuccessNotification(
+        context,
+        message: 'Google signed in successfully!',
       );
 
       context.go('/');
