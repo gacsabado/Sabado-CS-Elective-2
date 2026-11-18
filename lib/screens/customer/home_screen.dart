@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+
+import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../state/cart_state.dart';
 import '../../widgets/hero_banner_slider.dart';
 import '../../widgets/product_card.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   final ThemeMode themeMode;
   final VoidCallback onToggleTheme;
 
@@ -18,19 +20,70 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Load products when the home screen first opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final productState = ref.read(productProvider);
+
+      if (productState.products.isEmpty && !productState.isLoading) {
+        ref.read(productProvider.notifier).loadProducts();
+      }
+    });
+  }
+
+  // Sign out the current user.
+  Future<void> _signOut() async {
+    try {
+      await ref.read(authServiceProvider).signOut();
+
+      if (!mounted) return;
+
+      // Clear the cart after successful logout.
+      ref.read(cartProvider.notifier).clearCart();
+
+      context.go('/signin');
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to sign out: $error')));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Riverpod product state.
+    final productState = ref.watch(productProvider);
+    final productNotifier = ref.read(productProvider.notifier);
+
+    // Riverpod cart state.
+    final cart = ref.watch(cartProvider);
+
+    // Current authenticated user.
+    final currentUser = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         leading: IconButton(
           icon: Icon(
-            themeMode == ThemeMode.dark
+            widget.themeMode == ThemeMode.dark
                 ? Icons.light_mode
                 : Icons.dark_mode,
           ),
-          onPressed: onToggleTheme,
+          onPressed: widget.onToggleTheme,
           tooltip: 'Toggle Theme',
         ),
         title: SvgPicture.asset(
@@ -45,7 +98,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          //SIGN-IN
+          // SIGN-UP
           TextButton(
             onPressed: () => context.go('/signup'),
             child: const Text(
@@ -55,24 +108,24 @@ class HomeScreen extends StatelessWidget {
           ),
 
           // SHOPPING CART
-          ListenableBuilder(
-            listenable: CartState.instance,
-            builder: (context, _) {
-              final count = CartState.instance.totalItemCount;
-
-              return Badge(
-                isLabelVisible: count > 0,
-                label: Text('$count'),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.shopping_cart_outlined,
-                  ),
-                  onPressed: () => context.go('/cart'),
-                  tooltip: 'Shopping Cart',
-                ),
-              );
-            },
+          Badge(
+            isLabelVisible: cart.totalItemCount > 0,
+            label: Text('${cart.totalItemCount}'),
+            child: IconButton(
+              icon: const Icon(Icons.shopping_cart_outlined),
+              onPressed: () => context.go('/cart'),
+              tooltip: 'Shopping Cart',
+            ),
           ),
+
+          // SIGN-OUT (only visible when authenticated)
+          if (currentUser != null)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _signOut,
+              tooltip: 'Sign Out',
+            ),
+
           const SizedBox(width: 8),
         ],
       ),
@@ -92,21 +145,15 @@ class HomeScreen extends StatelessWidget {
           return CustomScrollView(
             slivers: [
               // HERO BANNER
-              const SliverToBoxAdapter(
-                child: HeroBannerSlider(),
-              ),
+              const SliverToBoxAdapter(child: HeroBannerSlider()),
 
               // PRICE FILTER
-              const SliverToBoxAdapter(
-                child: _PriceFilter(),
-              ),
+              const SliverToBoxAdapter(child: _PriceFilter()),
 
               // SECTION TITLE
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    16, 20, 16, 8,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                   child: Text(
                     'EXPLORE ALL SERIES',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -118,150 +165,114 @@ class HomeScreen extends StatelessWidget {
               ),
 
               // PRODUCTS FROM SUPABASE
-              Consumer<ProductProvider>(
-                builder: (context, provider, _) {
-                  if (provider.isLoading &&
-                      provider.products.isEmpty) {
-                    return const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.all(40),
-                        child: Center(
-                          child: CircularProgressIndicator(),
+              if (productState.isLoading && productState.products.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              else if (productState.error != null &&
+                  productState.products.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.error_outline, size: 48),
+                        const SizedBox(height: 12),
+                        const Text('Unable to load products.'),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: productNotifier.refresh,
+                          child: const Text('RETRY'),
                         ),
-                      ),
-                    );
-                  }
-
-                  if (provider.error != null &&
-                      provider.products.isEmpty) {
-                    return SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 48,
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Unable to load products.',
-                            ),
-                            const SizedBox(height: 12),
-                            TextButton(
-                              onPressed: provider.refresh,
-                              child: const Text('RETRY'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (provider.products.isEmpty) {
-                    return const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Center(
-                          child: Text(
-                            'No products found in this price range.',
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return SliverPadding(
-                    padding: const EdgeInsets.all(12),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        childAspectRatio: 0.72,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final product =
-                              provider.products[index];
-
-                          return ProductCard(
-                            product: product,
-                            onTap: () {
-                              context.go(
-                                '/product/${product.id}',
-                                extra: product,
-                              );
-                            },
-                          );
-                        },
-                        childCount: provider.products.length,
-                      ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                )
+              else if (productState.products.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(
+                      child: Text('No products found in this price range.'),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.all(12),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: 0.72,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final product = productState.products[index];
+
+                      return ProductCard(
+                        product: product,
+                        onTap: () {
+                          context.go('/product/${product.id}', extra: product);
+                        },
+                      );
+                    }, childCount: productState.products.length),
+                  ),
+                ),
 
               // PAGINATION CONTROLS
               SliverToBoxAdapter(
-                child: Consumer<ProductProvider>(
-                  builder: (context, provider, _) {
-                    if (provider.products.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        16, 16, 16, 32,
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Page ${provider.currentPage + 1}',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
-                            children: [
-                              OutlinedButton(
-                                onPressed:
-                                    provider.currentPage > 0 &&
-                                            !provider.isLoading
-                                        ? provider.previousPage
-                                        : null,
-                                child: const Text('PREVIOUS'),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                onPressed:
-                                    provider.hasMore &&
-                                            !provider.isLoading
-                                        ? provider.nextPage
-                                        : null,
-                                child: const Text('NEXT'),
-                              ),
-                            ],
-                          ),
-                          if (provider.isLoading)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 12),
-                              child: CircularProgressIndicator(),
-                            ),
-                          if (provider.error != null)
+                child: productState.products.isEmpty
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                        child: Column(
+                          children: [
                             Text(
-                              'Unable to load the requested page.',
-                              style: TextStyle(
-                                color: theme.colorScheme.error,
-                              ),
+                              'Page ${productState.currentPage + 1}',
+                              style: theme.textTheme.titleMedium,
                             ),
-                        ],
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                OutlinedButton(
+                                  onPressed:
+                                      productState.currentPage > 0 &&
+                                          !productState.isLoading
+                                      ? productNotifier.previousPage
+                                      : null,
+                                  child: const Text('PREVIOUS'),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton(
+                                  onPressed:
+                                      productState.hasMore &&
+                                          !productState.isLoading
+                                      ? productNotifier.nextPage
+                                      : null,
+                                  child: const Text('NEXT'),
+                                ),
+                              ],
+                            ),
+                            if (productState.isLoading)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 12),
+                                child: CircularProgressIndicator(),
+                              ),
+                            if (productState.error != null)
+                              Text(
+                                'Unable to load the requested page.',
+                                style: TextStyle(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           );
@@ -272,20 +283,21 @@ class HomeScreen extends StatelessWidget {
 }
 
 // PRICE RANGE SLIDER
-class _PriceFilter extends StatefulWidget {
+class _PriceFilter extends ConsumerStatefulWidget {
   const _PriceFilter();
 
   @override
-  State<_PriceFilter> createState() => _PriceFilterState();
+  ConsumerState<_PriceFilter> createState() => _PriceFilterState();
 }
 
-class _PriceFilterState extends State<_PriceFilter> {
+class _PriceFilterState extends ConsumerState<_PriceFilter> {
   RangeValues _selectedRange = const RangeValues(0, 100);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final provider = context.watch<ProductProvider>();
+    final productState = ref.watch(productProvider);
+    final productNotifier = ref.read(productProvider.notifier);
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -304,15 +316,14 @@ class _PriceFilterState extends State<_PriceFilter> {
                   ),
                 ),
                 TextButton(
-                  onPressed: provider.isLoading
+                  onPressed: productState.isLoading
                       ? null
                       : () {
                           setState(() {
-                            _selectedRange =
-                                const RangeValues(0, 100);
+                            _selectedRange = const RangeValues(0, 100);
                           });
 
-                          provider.setPriceRange(0, 100);
+                          productNotifier.setPriceRange(0, 100);
                         },
                   child: const Text('RESET'),
                 ),
@@ -348,20 +359,17 @@ class _PriceFilterState extends State<_PriceFilter> {
                 '\$${_selectedRange.start.toStringAsFixed(0)}',
                 '\$${_selectedRange.end.toStringAsFixed(0)}',
               ),
-              onChanged: provider.isLoading
+              onChanged: productState.isLoading
                   ? null
                   : (values) {
                       setState(() {
                         _selectedRange = values;
                       });
                     },
-              onChangeEnd: provider.isLoading
+              onChangeEnd: productState.isLoading
                   ? null
                   : (values) {
-                      provider.setPriceRange(
-                        values.start,
-                        values.end,
-                      );
+                      productNotifier.setPriceRange(values.start, values.end);
                     },
             ),
 

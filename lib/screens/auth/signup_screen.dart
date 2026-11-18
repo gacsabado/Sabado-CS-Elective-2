@@ -1,19 +1,22 @@
-import '../../widgets/success_notification.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-class SignupScreen extends StatefulWidget {
+import '../../providers/auth_provider.dart';
+import '../../widgets/success_notification.dart';
+
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _emailController = TextEditingController();
@@ -27,15 +30,6 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  final _supabase = Supabase.instance.client;
-
-  String get _redirectUrl {
-    if (kIsWeb) {
-      return Uri.base.origin;
-    }
-    return 'hironofinds://login-callback';
-  }
-
   // EMAIL SIGN UP
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
@@ -43,15 +37,14 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await _supabase.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        emailRedirectTo: _redirectUrl,
-        data: {
-          'first_name': _firstNameController.text.trim(),
-          'last_name': _lastNameController.text.trim(),
-        },
-      );
+      final response = await ref
+          .read(authServiceProvider)
+          .signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+          );
 
       if (!mounted) return;
 
@@ -74,15 +67,15 @@ class _SignupScreenState extends State<SignupScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Signup failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Signup failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -95,60 +88,10 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isGoogleLoading = true);
 
     try {
-      // WEB GOOGLE SIGN UP
-      if (kIsWeb) {
-        await _supabase.auth.signInWithOAuth(
-          OAuthProvider.google,
-          redirectTo: Uri.base.origin,
-        );
+      await ref.read(authServiceProvider).signInWithGoogle();
 
-        return;
-      }
-
-      // GOOGLE CLIENT IDs
-      const iosClientId =
-          '345038281741-skvh0e1ej2eo5bb8p05efi5ab7imqrn1.apps.googleusercontent.com';
-
-      const webClientId =
-          '345038281741-nie8e1ge22tqir11pv4bahe5hoqutg6m.apps.googleusercontent.com';
-
-      final googleSignIn = GoogleSignIn.instance;
-
-      await googleSignIn.initialize(
-        clientId: iosClientId,
-        serverClientId: webClientId,
-      );
-
-      // Authenticate with Google
-      final googleUser = await googleSignIn.authenticate();
-
-      final googleAuthentication = googleUser.authentication;
-      final idToken = googleAuthentication.idToken;
-
-      if (idToken == null) {
-        throw const AuthException(
-          'Google did not return an ID token.',
-        );
-      }
-
-      // Get Google access token
-      final authorization = await googleUser.authorizationClient
-          .authorizationForScopes(['email', 'profile']);
-
-      final accessToken = authorization?.accessToken;
-
-      if (accessToken == null) {
-        throw const AuthException(
-          'Google did not return an access token.',
-        );
-      }
-
-      // Authenticate with Supabase
-      await _supabase.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      );
+      // Web OAuth redirects the browser to Google.
+      if (kIsWeb) return;
 
       if (!mounted) return;
 
@@ -171,17 +114,15 @@ class _SignupScreenState extends State<SignupScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google sign-up failed: $error'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Google sign-up failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isGoogleLoading = false);
@@ -232,9 +173,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ? IconButton(
                     onPressed: onToggleVisibility,
                     icon: Icon(
-                      obscureText
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      obscureText ? Icons.visibility_off : Icons.visibility,
                       color: Colors.grey,
                     ),
                   )
@@ -245,7 +184,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // DISPOSE CONTROLLERS
   @override
   void dispose() {
     _emailController.dispose();
@@ -274,7 +212,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   children: [
                     const SizedBox(height: 20),
 
-                    // POP MART LOGO
                     SvgPicture.asset(
                       'assets/Pop_Mart_logo.svg',
                       height: 85,
@@ -312,7 +249,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 30),
 
-                    // EMAIL
                     _buildTextField(
                       label: 'Email',
                       controller: _emailController,
@@ -334,7 +270,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 16),
 
-                    // FIRST NAME
                     _buildTextField(
                       label: 'First Name',
                       controller: _firstNameController,
@@ -350,7 +285,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 16),
 
-                    // LAST NAME
                     _buildTextField(
                       label: 'Last Name',
                       controller: _lastNameController,
@@ -366,7 +300,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 16),
 
-                    // PASSWORD
                     _buildTextField(
                       label: 'Password',
                       controller: _passwordController,
@@ -393,7 +326,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 16),
 
-                    // RETYPE PASSWORD
                     _buildTextField(
                       label: 'Retype Password',
                       controller: _confirmPasswordController,
@@ -402,8 +334,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       obscureText: _obscureConfirmPassword,
                       onToggleVisibility: () {
                         setState(() {
-                          _obscureConfirmPassword =
-                              !_obscureConfirmPassword;
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
                         });
                       },
                       validator: (value) {
@@ -421,7 +352,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 24),
 
-                    // SIGN UP BUTTON
                     SizedBox(
                       height: 50,
                       child: ElevatedButton(
@@ -437,21 +367,16 @@ class _SignupScreenState extends State<SignupScreen> {
                             ? const CircularProgressIndicator()
                             : const Text(
                                 'SIGN UP',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // OR DIVIDER
                     const Row(
                       children: [
-                        Expanded(
-                          child: Divider(color: Colors.white30),
-                        ),
+                        Expanded(child: Divider(color: Colors.white30)),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
@@ -459,25 +384,17 @@ class _SignupScreenState extends State<SignupScreen> {
                             style: TextStyle(color: Colors.white70),
                           ),
                         ),
-                        Expanded(
-                          child: Divider(color: Colors.white30),
-                        ),
+                        Expanded(child: Divider(color: Colors.white30)),
                       ],
                     ),
 
                     const SizedBox(height: 20),
 
-                    // GOOGLE SIGN UP BUTTON
                     SizedBox(
                       height: 50,
                       child: OutlinedButton.icon(
-                        onPressed: _isGoogleLoading
-                            ? null
-                            : _signUpWithGoogle,
-                        icon: const Icon(
-                          Icons.g_mobiledata,
-                          size: 28,
-                        ),
+                        onPressed: _isGoogleLoading ? null : _signUpWithGoogle,
+                        icon: const Icon(Icons.g_mobiledata, size: 28),
                         label: Text(
                           _isGoogleLoading
                               ? 'Connecting...'
@@ -485,9 +402,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: const BorderSide(
-                            color: Colors.white54,
-                          ),
+                          side: const BorderSide(color: Colors.white54),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -497,7 +412,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 24),
 
-                    // SIGN IN NAVIGATION
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

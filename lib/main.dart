@@ -1,13 +1,11 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/mock_data.dart';
 import 'models/product.dart';
-import 'providers/product_provider.dart';
 import 'screens/customer/cart_screen.dart';
 import 'screens/customer/checkout_confirmation_screen.dart';
 import 'screens/customer/home_screen.dart';
@@ -22,13 +20,10 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
 
   final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
-  final supabasePublishableKey =
-      dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ?? '';
+  final supabasePublishableKey = dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ?? '';
 
   if (supabaseUrl.isEmpty || supabasePublishableKey.isEmpty) {
-    throw StateError(
-      'Missing Supabase URL or publishable key in .env file.',
-    );
+    throw StateError('Missing Supabase URL or publishable key in .env file.');
   }
 
   // Initialize Supabase
@@ -37,7 +32,8 @@ Future<void> main() async {
     publishableKey: supabasePublishableKey,
   );
 
-  runApp(const PopMartApp());
+  // Initialize Flutter application with Riverpod
+  runApp(const ProviderScope(child: PopMartApp()));
 }
 
 class PopMartApp extends StatefulWidget {
@@ -63,10 +59,8 @@ class _PopMartAppState extends State<PopMartApp> {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => HomeScreen(
-          themeMode: _themeMode,
-          onToggleTheme: _toggleTheme,
-        ),
+        builder: (context, state) =>
+            HomeScreen(themeMode: _themeMode, onToggleTheme: _toggleTheme),
       ),
 
       GoRoute(
@@ -99,15 +93,11 @@ class _PopMartAppState extends State<PopMartApp> {
         },
       ),
 
-      GoRoute(
-        path: '/cart',
-        builder: (context, state) => const CartScreen(),
-      ),
+      GoRoute(path: '/cart', builder: (context, state) => const CartScreen()),
 
       GoRoute(
         path: '/checkout',
-        builder: (context, state) =>
-            const CheckoutConfirmationScreen(),
+        builder: (context, state) => const CheckoutConfirmationScreen(),
       ),
     ],
   );
@@ -132,20 +122,14 @@ class _PopMartAppState extends State<PopMartApp> {
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFE55322),
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -168,41 +152,25 @@ class _PopMartAppState extends State<PopMartApp> {
       cardTheme: CardThemeData(
         color: const Color(0xFF1E1E1E),
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFE55322),
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
 
-    // PROVIDER + APP
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => ProductProvider(
-            Supabase.instance.client,
-          )..loadProducts(),
-        ),
-      ],
-      child: MaterialApp.router(
-        title: 'POP MART Hirono Store',
-        debugShowCheckedModeBanner: false,
-        theme: lightTheme,
-        darkTheme: darkTheme,
-        themeMode: _themeMode,
-        routerConfig: _router,
-      ),
+    return MaterialApp.router(
+      title: 'POP MART Hirono Store',
+      debugShowCheckedModeBanner: false,
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: _themeMode,
+      routerConfig: _router,
     );
   }
 }

@@ -1,55 +1,158 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../models/cart_item.dart';
+import '../../providers/checkout_provider.dart';
+import '../../services/checkout_service.dart';
 import '../../state/cart_state.dart';
 
-class CheckoutConfirmationScreen extends StatefulWidget {
+class CheckoutConfirmationScreen extends ConsumerStatefulWidget {
   const CheckoutConfirmationScreen({super.key});
 
   @override
-  State<CheckoutConfirmationScreen> createState() => _CheckoutConfirmationScreenState();
+  ConsumerState<CheckoutConfirmationScreen> createState() =>
+      _CheckoutConfirmationScreenState();
 }
 
-class _CheckoutConfirmationScreenState extends State<CheckoutConfirmationScreen> {
-  late final List<CartItem> _summaryItems;
-  late final double _finalTotal;
+class _CheckoutConfirmationScreenState
+    extends ConsumerState<CheckoutConfirmationScreen> {
+  bool _isLoading = true;
+  String? _error;
+  CheckoutResult? _orderResult;
+  List<CartItem> _summaryItems = [];
 
   @override
   void initState() {
     super.initState();
-    // Snapshot current cart details before clearing cart state
-    _summaryItems = List.from(CartState.instance.items);
-    _finalTotal = CartState.instance.totalAmount;
 
-    // Clear cart after checkout purchase is confirmed
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      CartState.instance.clearCart();
+      if (!mounted) return;
+      _placeOrder();
     });
+  }
+
+  Future<void> _placeOrder() async {
+    if (_isLoading == false && _orderResult != null) return;
+
+    final cart = ref.read(cartProvider);
+
+    if (cart.items.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Your cart is empty. Please add products first.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _summaryItems = List<CartItem>.from(cart.items);
+    });
+
+    try {
+      final result = await ref
+          .read(checkoutServiceProvider)
+          .placeOrder(_summaryItems);
+
+      if (!mounted) return;
+
+      // Clear the cart only after Supabase successfully creates the order.
+      ref.read(cartProvider.notifier).clearCart();
+
+      setState(() {
+        _orderResult = result;
+        _isLoading = false;
+        _error = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _error = error.toString();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Guard against direct navigation when cart was empty
-    if (_summaryItems.isEmpty) {
+    // PROCESSING
+    if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Checkout Summary')),
-        body: Center(
+        appBar: AppBar(
+          title: const Text('Processing Order'),
+          automaticallyImplyLeading: false,
+        ),
+        body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('No order found.'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => context.go('/'),
-                child: const Text('RETURN HOME'),
-              ),
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text('Processing your order...'),
+              SizedBox(height: 8),
+              Text('Please do not close the app.'),
             ],
           ),
         ),
       );
     }
+
+    // ERROR
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Checkout Failed')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 80,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Unable to Place Order',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _placeOrder,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: const Text('TRY AGAIN'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.go('/cart'),
+                  child: const Text('RETURN TO CART'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // SUCCESS
+    final order = _orderResult!;
 
     return Scaffold(
       appBar: AppBar(
@@ -68,7 +171,9 @@ class _CheckoutConfirmationScreenState extends State<CheckoutConfirmationScreen>
             const SizedBox(height: 16),
             Text(
               'Thank You for Your Order!',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -80,20 +185,51 @@ class _CheckoutConfirmationScreenState extends State<CheckoutConfirmationScreen>
               ),
             ),
             const SizedBox(height: 24),
+
+            // ORDER NUMBER
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text('ORDER NUMBER', style: theme.textTheme.labelLarge),
+                    const SizedBox(height: 8),
+                    Text(
+                      '#${order.orderNumber}',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Status: ${order.status.toUpperCase()}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ORDER SUMMARY
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Order Summary',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Divider(height: 20),
                     ..._summaryItems.map(
                       (item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -106,7 +242,9 @@ class _CheckoutConfirmationScreenState extends State<CheckoutConfirmationScreen>
                             ),
                             Text(
                               '\$${item.subtotal.toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -116,9 +254,14 @@ class _CheckoutConfirmationScreenState extends State<CheckoutConfirmationScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total Amount Paid', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         Text(
-                          '\$${_finalTotal.toStringAsFixed(2)}',
+                          'Total Amount Paid',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '\$${order.totalAmount.toStringAsFixed(2)}',
                           style: theme.textTheme.titleLarge?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -130,7 +273,9 @@ class _CheckoutConfirmationScreenState extends State<CheckoutConfirmationScreen>
                 ),
               ),
             ),
+
             const SizedBox(height: 32),
+
             ElevatedButton(
               onPressed: () => context.go('/'),
               style: ElevatedButton.styleFrom(

@@ -49,7 +49,8 @@ final List<Product> hironoProducts = [
     series: 'After Dark',
     price: 29.99,
     imageUrl: 'assets/afterdark.jpeg',
-    description: 'Embrace the eerie mystery of nightfall with the Hirono After Dark Plush Doll Pendant.',
+    description:
+        'Embrace the eerie mystery of nightfall with the Hirono After Dark Plush Doll Pendant.',
   ),
   const Product(
     id: 'h2',
@@ -57,7 +58,8 @@ final List<Product> hironoProducts = [
     series: 'Road Journal Series',
     price: 19.99,
     imageUrl: 'assets/roadjournal.jpeg',
-    description: 'Documenting wanderlust, solitude, and quiet reflections along forgotten paths.',
+    description:
+        'Documenting wanderlust, solitude, and quiet reflections along forgotten paths.',
   ),
   const Product(
     id: 'h3',
@@ -65,7 +67,8 @@ final List<Product> hironoProducts = [
     series: 'Shelter Series',
     price: 19.99,
     imageUrl: 'assets/shelter.jpg',
-    description: 'Find solace in solitude. Explores inner protection and emotional sanctuaries.',
+    description:
+        'Find solace in solitude. Explores inner protection and emotional sanctuaries.',
   ),
   const Product(
     id: 'h4',
@@ -73,7 +76,8 @@ final List<Product> hironoProducts = [
     series: 'Little Mischief',
     price: 24.99,
     imageUrl: 'assets/littlemischief.jpg',
-    description: 'Playful rebellions and raw unfiltered emotions captured in detailed collectible figures.',
+    description:
+        'Playful rebellions and raw unfiltered emotions captured in detailed collectible figures.',
   ),
   const Product(
     id: 'h5',
@@ -81,7 +85,8 @@ final List<Product> hironoProducts = [
     series: 'Plush Doll Collection',
     price: 99.99,
     imageUrl: 'assets/plush.jpg',
-    description: 'A premium oversized vinyl and plush companion showcasing Hirono in moody bear attire.',
+    description:
+        'A premium oversized vinyl and plush companion showcasing Hirono in moody bear attire.',
   ),
   const Product(
     id: 'h6',
@@ -89,6 +94,7 @@ final List<Product> hironoProducts = [
     series: 'Reshape Series',
     price: 19.99,
     imageUrl: 'assets/reshape.jpg',
-    description: 'Accepting flaws and reshaping one’s personal narrative through artistic expression.',
+    description:
+        'Accepting flaws and reshaping one’s personal narrative through artistic expression.',
   ),
 ];

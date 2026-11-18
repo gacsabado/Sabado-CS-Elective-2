@@ -1,20 +1,13 @@
-
 import 'package:flutter/material.dart';
 
-void showSuccessNotification(
-  BuildContext context, {
-  required String message,
-}) {
+void showSuccessNotification(BuildContext context, {required String message}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.white,
-            ),
+            const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -31,9 +24,7 @@ void showSuccessNotification(
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
 }

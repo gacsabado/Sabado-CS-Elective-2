@@ -1,25 +1,25 @@
-import '../../widgets/success_notification.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-class SigninScreen extends StatefulWidget {
+import '../../providers/auth_provider.dart';
+import '../../widgets/success_notification.dart';
+
+class SigninScreen extends ConsumerStatefulWidget {
   const SigninScreen({super.key});
 
   @override
-  State<SigninScreen> createState() => _SigninScreenState();
+  ConsumerState<SigninScreen> createState() => _SigninScreenState();
 }
 
-class _SigninScreenState extends State<SigninScreen> {
+class _SigninScreenState extends ConsumerState<SigninScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  final _supabase = Supabase.instance.client;
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
@@ -31,10 +31,12 @@ class _SigninScreenState extends State<SigninScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _supabase.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      await ref
+          .read(authServiceProvider)
+          .signIn(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
       if (!mounted) return;
 
@@ -47,15 +49,15 @@ class _SigninScreenState extends State<SigninScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign-in failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Sign-in failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -67,49 +69,10 @@ class _SigninScreenState extends State<SigninScreen> {
     setState(() => _isGoogleLoading = true);
 
     try {
-      if (kIsWeb) {
-        await _supabase.auth.signInWithOAuth(
-          OAuthProvider.google,
-          redirectTo: Uri.base.origin,
-        );
-        return;
-      }
+      await ref.read(authServiceProvider).signInWithGoogle();
 
-      const iosClientId =
-          '345038281741-skvh0e1ej2eo5bb8p05efi5ab7imqrn1.apps.googleusercontent.com';
-
-      // Use the same Web Client ID configured in your SignupScreen.
-      const webClientId = '345038281741-nie8e1ge22tqir11pv4bahe5hoqutg6m.apps.googleusercontent.com';
-
-      final googleSignIn = GoogleSignIn.instance;
-
-      await googleSignIn.initialize(
-        clientId: iosClientId,
-        serverClientId: webClientId,
-      );
-
-      final googleUser = await googleSignIn.authenticate();
-
-      final idToken = googleUser.authentication.idToken;
-
-      if (idToken == null) {
-        throw const AuthException('Google did not return an ID token.');
-      }
-
-      final authorization = await googleUser.authorizationClient
-          .authorizationForScopes(['email', 'profile']);
-
-      final accessToken = authorization?.accessToken;
-
-      if (accessToken == null) {
-        throw const AuthException('Google did not return an access token.');
-      }
-
-      await _supabase.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      );
+      // Web OAuth redirects the browser to Google.
+      if (!mounted) return;
 
       if (!mounted) return;
 
@@ -132,15 +95,15 @@ class _SigninScreenState extends State<SigninScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google sign-in failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isGoogleLoading = false);
@@ -172,7 +135,6 @@ class _SigninScreenState extends State<SigninScreen> {
                   children: [
                     const SizedBox(height: 30),
 
-                    // POP MART Logo
                     SvgPicture.asset(
                       'assets/Pop_Mart_logo.svg',
                       height: 85,
@@ -258,20 +220,20 @@ class _SigninScreenState extends State<SigninScreen> {
                       style: const TextStyle(color: Colors.black87),
                       decoration: _inputDecoration('Enter your password')
                           .copyWith(
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: Colors.grey,
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
@@ -318,9 +280,7 @@ class _SigninScreenState extends State<SigninScreen> {
                             ? const CircularProgressIndicator()
                             : const Text(
                                 'SIGN IN',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
@@ -346,8 +306,7 @@ class _SigninScreenState extends State<SigninScreen> {
                     SizedBox(
                       height: 50,
                       child: OutlinedButton.icon(
-                        onPressed:
-                            _isGoogleLoading ? null : _signInWithGoogle,
+                        onPressed: _isGoogleLoading ? null : _signInWithGoogle,
                         icon: const Icon(Icons.g_mobiledata, size: 28),
                         label: Text(
                           _isGoogleLoading
@@ -398,10 +357,7 @@ class _SigninScreenState extends State<SigninScreen> {
       filled: true,
       fillColor: Colors.white,
       hintStyle: const TextStyle(color: Colors.grey),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide.none,

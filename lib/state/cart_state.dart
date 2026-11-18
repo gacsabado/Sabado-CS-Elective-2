@@ -1,52 +1,104 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/cart_item.dart';
 import '../models/product.dart';
 
-class CartState extends ChangeNotifier {
-  static final CartState instance = CartState._internal();
-  CartState._internal();
+class CartState {
+  final List<CartItem> items;
 
-  final List<CartItem> _items = [];
+  const CartState({this.items = const []});
 
-  List<CartItem> get items => List.unmodifiable(_items);
+  int get totalItemCount {
+    return items.fold(0, (sum, item) => sum + item.quantity);
+  }
 
-  int get totalItemCount => _items.fold(0, (sum, item) => sum + item.quantity);
+  double get totalAmount {
+    return items.fold(0.0, (sum, item) => sum + item.subtotal);
+  }
+}
 
-  double get totalAmount => _items.fold(0.0, (sum, item) => sum + item.subtotal);
+final cartProvider = NotifierProvider<CartNotifier, CartState>(
+  CartNotifier.new,
+);
 
-  /// Added quantity parameter (defaults to 1)
+class CartNotifier extends Notifier<CartState> {
+  @override
+  CartState build() {
+    return const CartState();
+  }
+
+  // ADD PRODUCT TO CART
   void addToCart(Product product, {int quantity = 1}) {
-    final index = _items.indexWhere((item) => item.product.id == product.id);
+    if (quantity <= 0) return;
+
+    final updatedItems = state.items
+        .map((item) => CartItem(product: item.product, quantity: item.quantity))
+        .toList();
+
+    final index = updatedItems.indexWhere(
+      (item) => item.product.id == product.id,
+    );
+
     if (index >= 0) {
-      _items[index].quantity += quantity;
+      updatedItems[index].quantity += quantity;
     } else {
-      _items.add(CartItem(product: product, quantity: quantity));
+      updatedItems.add(CartItem(product: product, quantity: quantity));
     }
-    notifyListeners();
+
+    state = CartState(items: updatedItems);
   }
 
+  // INCREMENT QUANTITY
   void incrementQuantity(String productId) {
-    final index = _items.indexWhere((item) => item.product.id == productId);
+    final updatedItems = _copyItems();
+
+    final index = updatedItems.indexWhere(
+      (item) => item.product.id == productId,
+    );
+
     if (index >= 0) {
-      _items[index].quantity++;
-      notifyListeners();
+      updatedItems[index].quantity++;
+
+      state = CartState(items: updatedItems);
     }
   }
 
+  // DECREMENT QUANTITY
   void decrementQuantity(String productId) {
-    final index = _items.indexWhere((item) => item.product.id == productId);
+    final updatedItems = _copyItems();
+
+    final index = updatedItems.indexWhere(
+      (item) => item.product.id == productId,
+    );
+
     if (index >= 0) {
-      if (_items[index].quantity > 1) {
-        _items[index].quantity--;
+      if (updatedItems[index].quantity > 1) {
+        updatedItems[index].quantity--;
       } else {
-        _items.removeAt(index);
+        updatedItems.removeAt(index);
       }
-      notifyListeners();
+
+      state = CartState(items: updatedItems);
     }
   }
 
+  // REMOVE PRODUCT
+  void removeFromCart(String productId) {
+    final updatedItems = _copyItems()
+      ..removeWhere((item) => item.product.id == productId);
+
+    state = CartState(items: updatedItems);
+  }
+
+  // CLEAR CART
   void clearCart() {
-    _items.clear();
-    notifyListeners();
+    state = const CartState();
+  }
+
+  // CREATE A NEW LIST WITH COPIED CART ITEMS
+  List<CartItem> _copyItems() {
+    return state.items
+        .map((item) => CartItem(product: item.product, quantity: item.quantity))
+        .toList();
   }
 }

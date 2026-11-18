@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -6,12 +5,10 @@ class GoogleSignInButton extends StatefulWidget {
   const GoogleSignInButton({super.key});
 
   @override
-  State<GoogleSignInButton> createState() =>
-      _GoogleSignInButtonState();
+  State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
 }
 
-class _GoogleSignInButtonState
-    extends State<GoogleSignInButton> {
+class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
 
   Future<void> _signInWithGoogle() async {
@@ -24,9 +21,9 @@ class _GoogleSignInButtonState
       );
     } on AuthException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted) {
@@ -48,9 +45,7 @@ class _GoogleSignInButtonState
       child: OutlinedButton.icon(
         onPressed: _isLoading ? null : _signInWithGoogle,
         icon: const Icon(Icons.g_mobiledata, size: 26),
-        label: Text(
-          _isLoading ? 'Connecting...' : 'Google',
-        ),
+        label: Text(_isLoading ? 'Connecting...' : 'Google'),
       ),
     );
   }

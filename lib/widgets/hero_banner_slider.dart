@@ -87,7 +87,10 @@ class _HeroBannerSliderState extends State<HeroBannerSlider> {
                         debugPrint('Failed to load asset image: $error');
                         return Container(
                           color: Colors.red,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           child: const Text(
                             'HIRONO (Asset Not Found)',
                             style: TextStyle(

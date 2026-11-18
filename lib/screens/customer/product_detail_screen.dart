@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../models/product.dart';
 import '../../state/cart_state.dart';
 
-class ProductDetailScreen extends StatefulWidget {
+class ProductDetailScreen extends ConsumerStatefulWidget {
   final Product product;
 
   const ProductDetailScreen({super.key, required this.product});
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() =>
+      _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
+class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _quantity = 1;
   bool _isAdding = false;
 
@@ -35,21 +38,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       _isAdding = true;
     });
 
-    // Pass chosen quantity to cart state
-    CartState.instance.addToCart(widget.product, quantity: _quantity);
+    // Add the selected product and quantity using Riverpod.
+    ref
+        .read(cartProvider.notifier)
+        .addToCart(widget.product, quantity: _quantity);
 
-    // FIXED: Clear lingering snackbars before showing new one
+    // Clear any existing snackbar.
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        showCloseIcon: true, // FIXED: User can manually close SnackBar anytime
+        showCloseIcon: true,
         content: Text('${widget.product.name} (x$_quantity) added to cart!'),
         duration: const Duration(seconds: 3),
         action: SnackBarAction(
           label: 'VIEW CART',
           onPressed: () {
-            // FIXED: Hide snackbar immediately upon clicking View Cart
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             context.go('/cart');
           },
@@ -70,31 +74,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Listen to cart changes using Riverpod.
+    final cart = ref.watch(cartProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product.name),
         actions: [
-          ListenableBuilder(
-            listenable: CartState.instance,
-            builder: (context, _) {
-              final count = CartState.instance.totalItemCount;
-              return Badge(
-                isLabelVisible: count > 0,
-                label: Text('$count'),
-                child: IconButton(
-                  icon: const Icon(Icons.shopping_cart_outlined),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    context.go('/cart');
-                  },
-                  tooltip: 'Shopping Cart',
-                ),
-              );
-            },
+          Badge(
+            isLabelVisible: cart.totalItemCount > 0,
+            label: Text('${cart.totalItemCount}'),
+            child: IconButton(
+              icon: const Icon(Icons.shopping_cart_outlined),
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                context.go('/cart');
+              },
+              tooltip: 'Shopping Cart',
+            ),
           ),
           const SizedBox(width: 8),
         ],
       ),
+
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,8 +117,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ),
+
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -128,6 +131,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
+
                   Text(
                     widget.product.name,
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -135,6 +139,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+
                   Text(
                     '\$${widget.product.price.toStringAsFixed(2)}',
                     style: theme.textTheme.headlineMedium?.copyWith(
@@ -142,9 +147,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const Divider(height: 24),
 
-                  // FIXED: Interactive Quantity Selector (+ / -)
+                  // QUANTITY SELECTOR
                   Row(
                     children: [
                       Text(
@@ -154,10 +160,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
+
                       Container(
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                            color: theme.colorScheme.outline.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -165,11 +174,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove),
-                              onPressed: _quantity > 1 ? _decrementQuantity : null,
+                              onPressed: _quantity > 1
+                                  ? _decrementQuantity
+                                  : null,
                               tooltip: 'Decrease quantity',
                             ),
+
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               child: Text(
                                 '$_quantity',
                                 style: theme.textTheme.titleMedium?.copyWith(
@@ -177,6 +191,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ),
                             ),
+
                             IconButton(
                               icon: const Icon(Icons.add),
                               onPressed: _incrementQuantity,
@@ -189,11 +204,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
 
                   const Divider(height: 24),
+
                   Text(
                     'Description',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
+
                   Text(
                     widget.product.description,
                     style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
@@ -204,9 +223,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
       ),
+
+      // ADD TO CART BUTTON
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: ElevatedButton.icon(
             onPressed: _isAdding ? null : _handleAddToCart,
             icon: const Icon(Icons.add_shopping_cart),
