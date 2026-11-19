@@ -1,7 +1,9 @@
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/cart_item.dart';
 import '../models/product.dart';
+import '../providers/profile_provider.dart';
 
 class CartState {
   final List<CartItem> items;
@@ -27,9 +29,15 @@ class CartNotifier extends Notifier<CartState> {
     return const CartState();
   }
 
-  // ADD PRODUCT TO CART
+  // CHECK IF THE CURRENT USER IS A CUSTOMER
+  bool get _isCustomer {
+    final profile = ref.read(profileProvider).value;
+    return profile?.isCustomer ?? false;
+  }
+
+  // ADD PRODUCT TO CART: CUSTOMERS ONLY
   void addToCart(Product product, {int quantity = 1}) {
-    if (quantity <= 0) return;
+    if (!_isCustomer || quantity <= 0) return;
 
     final updatedItems = state.items
         .map((item) => CartItem(product: item.product, quantity: item.quantity))
@@ -48,8 +56,10 @@ class CartNotifier extends Notifier<CartState> {
     state = CartState(items: updatedItems);
   }
 
-  // INCREMENT QUANTITY
+  // INCREMENT QUANTITY: CUSTOMERS ONLY
   void incrementQuantity(String productId) {
+    if (!_isCustomer) return;
+
     final updatedItems = _copyItems();
 
     final index = updatedItems.indexWhere(
@@ -58,13 +68,14 @@ class CartNotifier extends Notifier<CartState> {
 
     if (index >= 0) {
       updatedItems[index].quantity++;
-
       state = CartState(items: updatedItems);
     }
   }
 
-  // DECREMENT QUANTITY
+  // DECREMENT QUANTITY: CUSTOMERS ONLY
   void decrementQuantity(String productId) {
+    if (!_isCustomer) return;
+
     final updatedItems = _copyItems();
 
     final index = updatedItems.indexWhere(
@@ -82,15 +93,17 @@ class CartNotifier extends Notifier<CartState> {
     }
   }
 
-  // REMOVE PRODUCT
+  // REMOVE PRODUCT: CUSTOMERS ONLY
   void removeFromCart(String productId) {
+    if (!_isCustomer) return;
+
     final updatedItems = _copyItems()
       ..removeWhere((item) => item.product.id == productId);
 
     state = CartState(items: updatedItems);
   }
 
-  // CLEAR CART
+  // CLEAR CART: ALLOWED FOR LOGOUT / RESET
   void clearCart() {
     state = const CartState();
   }

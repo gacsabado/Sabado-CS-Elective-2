@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
-import '../../state/cart_state.dart';
 import '../../widgets/hero_banner_slider.dart';
 import '../../widgets/product_card.dart';
 
@@ -40,26 +39,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  // Sign out the current user.
-  Future<void> _signOut() async {
-    try {
-      await ref.read(authServiceProvider).signOut();
-
-      if (!mounted) return;
-
-      // Clear the cart after successful logout.
-      ref.read(cartProvider.notifier).clearCart();
-
-      context.go('/signin');
-    } catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to sign out: $error')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -67,9 +46,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Riverpod product state.
     final productState = ref.watch(productProvider);
     final productNotifier = ref.read(productProvider.notifier);
-
-    // Riverpod cart state.
-    final cart = ref.watch(cartProvider);
 
     // Current authenticated user.
     final currentUser = ref.watch(currentUserProvider);
@@ -98,35 +74,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         actions: [
-          // SIGN-UP
-          TextButton(
-            onPressed: () => context.go('/signup'),
-            child: const Text(
-              'Sign Up',
-              style: TextStyle(fontWeight: FontWeight.bold),
+          // Guest actions
+          if (currentUser == null) ...[
+            TextButton(
+              onPressed: () => context.push('/signin'),
+              child: const Text('Sign In'),
             ),
-          ),
-
-          // SHOPPING CART
-          Badge(
-            isLabelVisible: cart.totalItemCount > 0,
-            label: Text('${cart.totalItemCount}'),
-            child: IconButton(
-              icon: const Icon(Icons.shopping_cart_outlined),
-              onPressed: () => context.go('/cart'),
-              tooltip: 'Shopping Cart',
+            TextButton(
+              onPressed: () => context.push('/signup'),
+              child: const Text('Sign Up'),
             ),
-          ),
+          ],
 
-          // SIGN-OUT (only visible when authenticated)
+          // Authenticated customer action
           if (currentUser != null)
             IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: _signOut,
-              tooltip: 'Sign Out',
+              onPressed: () => context.push('/profile'),
+              icon: const Icon(Icons.person_outline),
+              tooltip: 'My Profile',
             ),
 
-          const SizedBox(width: 8),
+          // Cart remains accessible
+          // Keep your existing cart icon and badge here.
         ],
       ),
 
@@ -216,7 +185,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       return ProductCard(
                         product: product,
                         onTap: () {
-                          context.go('/product/${product.id}', extra: product);
+                          context.push('/product/${product.id}', extra: product);
                         },
                       );
                     }, childCount: productState.products.length),

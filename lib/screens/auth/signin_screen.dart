@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../widgets/success_notification.dart';
+import '../../providers/profile_provider.dart';
 
 class SigninScreen extends ConsumerStatefulWidget {
   const SigninScreen({super.key});
@@ -25,18 +26,41 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
   bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
+  Future<void> _navigateAfterSignIn() async {
+    // Refresh the profile after authentication.
+    ref.invalidate(profileProvider);
+
+    // Wait until the user's profile and role are loaded.
+    final profile = await ref.read(profileProvider.future);
+
+    if (!mounted) return;
+
+    if (profile == null) {
+      throw Exception(
+        'Your account profile could not be found. Please contact support.',
+      );
+    }
+
+    // Navigate according to the account role.
+    if (profile.isAdmin) {
+      context.go('/admin');
+    } else {
+      context.go('/');
+    }
+  }
+
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      await ref
-          .read(authServiceProvider)
-          .signIn(
+      await ref.read(authServiceProvider).signIn(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
+
+      await _navigateAfterSignIn();
 
       if (!mounted) return;
 
@@ -44,20 +68,18 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
         context,
         message: 'Successfully signed in! Welcome back.',
       );
-
-      context.go('/');
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Sign-in failed: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign-in failed: $error')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -71,8 +93,8 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
     try {
       await ref.read(authServiceProvider).signInWithGoogle();
 
-      // Web OAuth redirects the browser to Google.
-      if (!mounted) return;
+      // Navigate based on the authenticated user's database role.
+      await _navigateAfterSignIn();
 
       if (!mounted) return;
 
@@ -80,8 +102,6 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
         context,
         message: 'Google signed in successfully!',
       );
-
-      context.go('/');
     } on GoogleSignInException catch (error) {
       if (!mounted) return;
 
@@ -95,15 +115,15 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google sign-in failed: $error')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isGoogleLoading = false);

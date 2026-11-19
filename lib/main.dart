@@ -4,14 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'data/mock_data.dart';
-import 'models/product.dart';
-import 'screens/customer/cart_screen.dart';
-import 'screens/customer/checkout_confirmation_screen.dart';
-import 'screens/customer/home_screen.dart';
-import 'screens/customer/product_detail_screen.dart';
-import 'screens/auth/signin_screen.dart';
-import 'screens/auth/signup_screen.dart';
+import 'core/router/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,52 +47,9 @@ class _PopMartAppState extends State<PopMartApp> {
     });
   }
 
-  late final GoRouter _router = GoRouter(
-    initialLocation: '/',
-    routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) =>
-            HomeScreen(themeMode: _themeMode, onToggleTheme: _toggleTheme),
-      ),
-
-      GoRoute(
-        path: '/signup',
-        builder: (context, state) => const SignupScreen(),
-      ),
-
-      GoRoute(
-        path: '/signin',
-        builder: (context, state) => const SigninScreen(),
-      ),
-
-      GoRoute(
-        path: '/product/:id',
-        builder: (context, state) {
-          final extraProduct = state.extra;
-
-          if (extraProduct is Product) {
-            return ProductDetailScreen(product: extraProduct);
-          }
-
-          final id = state.pathParameters['id'];
-
-          final product = hironoProducts.firstWhere(
-            (p) => p.id == id,
-            orElse: () => hironoProducts.first,
-          );
-
-          return ProductDetailScreen(product: product);
-        },
-      ),
-
-      GoRoute(path: '/cart', builder: (context, state) => const CartScreen()),
-
-      GoRoute(
-        path: '/checkout',
-        builder: (context, state) => const CheckoutConfirmationScreen(),
-      ),
-    ],
+  late final GoRouter _router = createAppRouter(
+    getThemeMode: () => _themeMode,
+    onToggleTheme: _toggleTheme,
   );
 
   @override

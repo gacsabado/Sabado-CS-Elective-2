@@ -1,8 +1,10 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/product.dart';
+import '../../providers/profile_provider.dart';
 import '../../state/cart_state.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
@@ -34,16 +36,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 
   void _handleAddToCart() {
+    // Only customers are allowed to add products to their cart.
+    final profile = ref.read(profileProvider).value;
+
+    if (profile == null || !profile.isCustomer) {
+      return;
+    }
+
     setState(() {
       _isAdding = true;
     });
 
-    // Add the selected product and quantity using Riverpod.
     ref
         .read(cartProvider.notifier)
         .addToCart(widget.product, quantity: _quantity);
 
-    // Clear any existing snackbar.
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -55,7 +62,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           label: 'VIEW CART',
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            context.go('/cart');
+            context.push('/cart');
           },
         ),
       ),
@@ -73,26 +80,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Listen to cart changes using Riverpod.
     final cart = ref.watch(cartProvider);
+    final profileAsync = ref.watch(profileProvider);
+
+    // Hide shopping controls unless the user's customer profile is loaded.
+    final isCustomer = profileAsync.value?.isCustomer ?? false;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product.name),
         actions: [
-          Badge(
-            isLabelVisible: cart.totalItemCount > 0,
-            label: Text('${cart.totalItemCount}'),
-            child: IconButton(
-              icon: const Icon(Icons.shopping_cart_outlined),
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                context.go('/cart');
-              },
-              tooltip: 'Shopping Cart',
+          if (isCustomer)
+            Badge(
+              isLabelVisible: cart.totalItemCount > 0,
+              label: Text('${cart.totalItemCount}'),
+              child: IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  context.push('/cart');
+                },
+                tooltip: 'Shopping Cart',
+              ),
             ),
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -150,60 +160,61 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                   const Divider(height: 24),
 
-                  // QUANTITY SELECTOR
-                  Row(
-                    children: [
-                      Text(
-                        'Quantity:',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: theme.colorScheme.outline.withValues(
-                              alpha: 0.5,
-                            ),
+                  // QUANTITY SELECTOR: CUSTOMERS ONLY
+                  if (isCustomer) ...[
+                    Row(
+                      children: [
+                        Text(
+                          'Quantity:',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
-                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove),
-                              onPressed: _quantity > 1
-                                  ? _decrementQuantity
-                                  : null,
-                              tooltip: 'Decrease quantity',
-                            ),
+                        const SizedBox(width: 16),
 
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: theme.colorScheme.outline.withValues(
+                                alpha: 0.5,
                               ),
-                              child: Text(
-                                '$_quantity',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove),
+                                onPressed: _quantity > 1
+                                    ? _decrementQuantity
+                                    : null,
+                                tooltip: 'Decrease quantity',
+                              ),
+
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  '$_quantity',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            IconButton(
-                              icon: const Icon(Icons.add),
-                              onPressed: _incrementQuantity,
-                              tooltip: 'Increase quantity',
-                            ),
-                          ],
+                              IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: _incrementQuantity,
+                                tooltip: 'Increase quantity',
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const Divider(height: 24),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                  ],
 
                   Text(
                     'Description',
@@ -224,20 +235,24 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ),
       ),
 
-      // ADD TO CART BUTTON
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: _isAdding ? null : _handleAddToCart,
-            icon: const Icon(Icons.add_shopping_cart),
-            label: Text(_isAdding ? 'ADDING...' : 'ADD TO CART ($_quantity)'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
-            ),
-          ),
-        ),
-      ),
+      // ADD TO CART BUTTON: CUSTOMERS ONLY
+      bottomNavigationBar: isCustomer
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ElevatedButton.icon(
+                  onPressed: _isAdding ? null : _handleAddToCart,
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: Text(
+                    _isAdding ? 'ADDING...' : 'ADD TO CART ($_quantity)',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

@@ -1,7 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../state/cart_state.dart';
 
 class CartScreen extends ConsumerWidget {
@@ -10,17 +12,14 @@ class CartScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-
-    // Listen to cart changes using Riverpod.
     final cart = ref.watch(cartProvider);
-
-    // Access cart functions.
     final cartNotifier = ref.read(cartProvider.notifier);
-
     final items = cart.items;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shopping Cart')),
+      appBar: AppBar(
+        title: const Text('Shopping Cart'),
+      ),
       body: items.isEmpty
           ? Center(
               child: Column(
@@ -32,10 +31,19 @@ class CartScreen extends ConsumerWidget {
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 16),
-                  Text('Your cart is empty', style: theme.textTheme.titleLarge),
+                  Text(
+                    'Your cart is empty',
+                    style: theme.textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => context.go('/'),
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
+                    },
                     child: const Text('EXPLORE PRODUCTS'),
                   ),
                 ],
@@ -62,14 +70,12 @@ class CartScreen extends ConsumerWidget {
                                 child: Container(
                                   width: 70,
                                   height: 70,
-                                  color:
-                                      theme.colorScheme.surfaceContainerHighest,
+                                  color: theme.colorScheme.surfaceContainerHighest,
                                   child: Image.asset(
                                     item.product.imageUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(Icons.image),
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(Icons.image),
                                   ),
                                 ),
                               ),
@@ -82,8 +88,8 @@ class CartScreen extends ConsumerWidget {
                                       item.product.name,
                                       style: theme.textTheme.titleMedium
                                           ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
@@ -93,17 +99,14 @@ class CartScreen extends ConsumerWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       'Subtotal: \$${item.subtotal.toStringAsFixed(2)}',
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            color: theme.colorScheme.primary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-
-                              // QUANTITY CONTROLS
                               Row(
                                 children: [
                                   IconButton(
@@ -118,11 +121,14 @@ class CartScreen extends ConsumerWidget {
                                   ),
                                   Text(
                                     '${item.quantity}',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.add_circle_outline),
+                                    icon: const Icon(
+                                      Icons.add_circle_outline,
+                                    ),
                                     onPressed: () {
                                       cartNotifier.incrementQuantity(
                                         item.product.id,
@@ -190,12 +196,50 @@ class CartScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => context.go('/checkout'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 50),
+
+                        // CHECKOUT BUTTON
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final user = ref.read(currentUserProvider);
+
+                              if (user == null) {
+                                showDialog(
+                                  context: context,
+                                  builder: (dialogContext) => AlertDialog(
+                                    title: const Text('Sign In Required'),
+                                    content: const Text(
+                                      'Unable to place order. Please sign in '
+                                      'or sign up first before proceeding '
+                                      'to checkout.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(dialogContext);
+                                          context.push('/signup');
+                                        },
+                                        child: const Text('SIGN UP'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(dialogContext);
+                                          context.push('/signin');
+                                        },
+                                        child: const Text('SIGN IN'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                return;
+                              }
+
+                              context.push('/checkout');
+                            },
+                            child: const Text('PROCEED TO CHECKOUT'),
                           ),
-                          child: const Text('PROCEED TO CHECKOUT'),
                         ),
                       ],
                     ),
