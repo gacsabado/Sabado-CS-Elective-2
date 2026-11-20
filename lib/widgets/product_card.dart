@@ -19,21 +19,37 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: Image.asset(
-                  product.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.image,
-                    size: 40,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: product.imageUrl.trim().isEmpty
+                  ? Icon(
+                      Icons.image_outlined,
+                      size: 40,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )
+                  : Image.network(
+                      product.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.broken_image_outlined,
+                          size: 40,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        );
+                      },
+                    ),
             ),
+          ),
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(

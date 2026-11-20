@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../widgets/success_notification.dart';
 import '../../providers/profile_provider.dart';
+
 
 class SigninScreen extends ConsumerStatefulWidget {
   const SigninScreen({super.key});
@@ -26,12 +28,10 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
   bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
-  Future<void> _navigateAfterSignIn() async {
-    // Refresh the profile after authentication.
-    ref.invalidate(profileProvider);
-
-    // Wait until the user's profile and role are loaded.
-    final profile = await ref.read(profileProvider.future);
+  Future<void> _navigateAfterSignIn(String userId) async {
+    final profile = await ref
+        .read(profileServiceProvider)
+        .getProfile(userId);
 
     if (!mounted) return;
 
@@ -41,9 +41,13 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
       );
     }
 
-    // Navigate according to the account role.
+    // Refresh auth and profile providers so the destination
+    // screen sees the latest authenticated user and role.
+    ref.invalidate(authStateProvider);
+    ref.invalidate(profileProvider);
+
     if (profile.isAdmin) {
-      context.go('/admin');
+      context.go('/');
     } else {
       context.go('/');
     }
@@ -55,12 +59,20 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authServiceProvider).signIn(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+      final response = await ref.read(authServiceProvider).signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-      await _navigateAfterSignIn();
+      final user = response.user;
+
+      if (user == null) {
+        throw const AuthException(
+          'Unable to retrieve your authenticated user.',
+        );
+      }
+
+      await _navigateAfterSignIn(user.id);
 
       if (!mounted) return;
 
@@ -93,8 +105,23 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
     try {
       await ref.read(authServiceProvider).signInWithGoogle();
 
-      // Navigate based on the authenticated user's database role.
-      await _navigateAfterSignIn();
+      // Web OAuth redirects the browser to Google and then back to
+      // the app. Supabase restores the session automatically.
+      if (kIsWeb) {
+        return;
+      }
+
+      // Mobile authentication can continue here because it does not
+      // require a browser redirect.
+      final user = ref.read(authServiceProvider).currentUser;
+
+      if (user == null) {
+        throw const AuthException(
+          'Google authentication succeeded, but the session is not available yet.',
+        );
+      }
+
+      await _navigateAfterSignIn(user.id);
 
       if (!mounted) return;
 

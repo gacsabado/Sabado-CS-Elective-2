@@ -1,10 +1,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/admin_dashboard_provider.dart';
 import '../../providers/profile_provider.dart';
-import '../../services/admin_dashboard_service.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -13,24 +13,24 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(adminDashboardProvider);
     final profileAsync = ref.watch(profileProvider);
-
-    final profile = profileAsync.value;
-    final adminName = profile?.fullName ?? 'Administrator';
+    final adminName = profileAsync.value?.fullName ?? 'Administrator';
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return Scaffold(
+      drawer: const _AdminDrawer(currentRoute: '/admin'),
       appBar: AppBar(
         title: const Text(
-          'Admin Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Dashboard',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
             tooltip: 'Refresh dashboard',
-            onPressed: () {
-              ref.invalidate(adminDashboardProvider);
-            },
-            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(adminDashboardProvider),
+            icon: const Icon(Icons.refresh_rounded),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -40,126 +40,317 @@ class AdminDashboardScreen extends ConsumerWidget {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome back, $adminName!',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(24),
                     ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Here is an overview of your HIRONO store.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'HIRONO STORE / ADMIN',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: colors.onPrimaryContainer,
+                            letterSpacing: 1.3,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Welcome back, $adminName',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: colors.onPrimaryContainer,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Here is what is happening in your store today.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onPrimaryContainer.withValues(
+                              alpha: 0.8,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.tonalIcon(
+                          onPressed: () => context.push('/admin/products'),
+                          icon: const Icon(Icons.inventory_2_outlined),
+                          label: const Text('Manage products'),
+                        ),
+                      ],
                     ),
-              ),
-              const SizedBox(height: 28),
+                  ),
+                  const SizedBox(height: 30),
+                  Text(
+                    'Store overview',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'A quick look at your store performance.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  statsAsync.when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(48),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (error, stackTrace) => _DashboardError(
+                      message: error.toString(),
+                      onRetry: () => ref.invalidate(adminDashboardProvider),
+                    ),
+                    data: (stats) => LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columns = constraints.maxWidth >= 850
+                            ? 4
+                            : constraints.maxWidth >= 520
+                                ? 2
+                                : 1;
 
-              Text(
-                'Store Overview',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                        return GridView.count(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          childAspectRatio: columns == 1
+                              ? 3.0
+                              : columns == 2
+                                  ? 1.55
+                                  : 1.25,
+                          children: [
+                            _StatCard(
+                              title: 'Products',
+                              value: stats.totalProducts.toString(),
+                              icon: Icons.inventory_2_outlined,
+                              description: 'Items in your catalog',
+                            ),
+                            _StatCard(
+                              title: 'Categories',
+                              value: stats.totalCategories.toString(),
+                              icon: Icons.category_outlined,
+                              description: 'Product collections',
+                            ),
+                            _StatCard(
+                              title: 'Orders',
+                              value: stats.totalOrders.toString(),
+                              icon: Icons.receipt_long_outlined,
+                              description: 'Orders received',
+                            ),
+                            _StatCard(
+                              title: 'Total sales',
+                              value: '₱${stats.totalSales.toStringAsFixed(2)}',
+                              icon: Icons.payments_outlined,
+                              description: 'Recorded store sales',
+                            ),
+                          ],
+                        );
+                      },
                     ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Quick actions',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _QuickAction(
+                    icon: Icons.add_box_outlined,
+                    title: 'Add a product',
+                    subtitle: 'Create a new item in your catalog',
+                    onTap: () => context.push('/admin/products'),
+                  ),
+                  const SizedBox(height: 10),
+                  _QuickAction(
+                    icon: Icons.inventory_outlined,
+                    title: 'View product catalog',
+                    subtitle: 'Update prices, stock, and product details',
+                    onTap: () => context.push('/admin/products'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-
-              statsAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, stackTrace) => _buildError(
-                  context,
-                  error.toString(),
-                  () => ref.invalidate(adminDashboardProvider),
-                ),
-                data: (stats) => _buildStatsGrid(context, stats),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildStatsGrid(
-    BuildContext context,
-    AdminDashboardStats stats,
-  ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 650 ? 4 : 2;
+class _AdminDrawer extends StatelessWidget {
+  final String currentRoute;
 
-        return GridView.count(
-          crossAxisCount: columns,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: columns == 4 ? 1.15 : 1.25,
-          children: [
-            _StatCard(
-              title: 'Products',
-              value: stats.totalProducts.toString(),
-              icon: Icons.inventory_2_outlined,
-            ),
-            _StatCard(
-              title: 'Categories',
-              value: stats.totalCategories.toString(),
-              icon: Icons.category_outlined,
-            ),
-            _StatCard(
-              title: 'Orders',
-              value: stats.totalOrders.toString(),
-              icon: Icons.receipt_long_outlined,
-            ),
-            _StatCard(
-              title: 'Total Sales',
-              value: '₱${stats.totalSales.toStringAsFixed(2)}',
-              icon: Icons.payments_outlined,
-            ),
-          ],
-        );
+  const _AdminDrawer({required this.currentRoute});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    final selectedIndex = switch (currentRoute) {
+      '/admin' => 1,
+      '/admin/products' => 2,
+      _ => 0,
+    };
+
+    return NavigationDrawer(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: (index) {
+        Navigator.pop(context);
+
+        switch (index) {
+          case 0:
+            context.go('/');
+            break;
+          case 1:
+            context.go('/admin');
+            break;
+          case 2:
+            context.go('/admin/products');
+            break;
+          case 3:
+              context.push('/profile');
+              break;
+        }
       },
-    );
-  }
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.storefront_rounded,
+                  color: colors.onPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'HIRONO',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text('ADMIN MANAGEMENT'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(28, 8, 16, 8),
+          child: Text(
+            'MAIN MENU',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
 
-  Widget _buildError(
-    BuildContext context,
-    String error,
-    VoidCallback onRetry,
-  ) {
-    return Center(
-      child: Column(
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: Colors.red,
-            size: 40,
+        // Home - Index 0
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded),
+          label: Text('Home'),
+        ),
+
+        // Dashboard - Index 1
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.dashboard_outlined),
+          selectedIcon: Icon(Icons.dashboard_rounded),
+          label: Text('Dashboard'),
+        ),
+
+        // Products - Index 2
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.inventory_2_outlined),
+          selectedIcon: Icon(Icons.inventory_2_rounded),
+          label: Text('Products'),
+        ),
+
+        const Padding(
+          padding: EdgeInsets.fromLTRB(28, 24, 16, 8),
+          child: Text(
+            'COMING SOON',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Unable to load dashboard statistics.',
-            style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.category_outlined, size: 22),
+              SizedBox(width: 28),
+              Text('Categories'),
+              Spacer(),
+              Text('Soon', style: TextStyle(fontSize: 11)),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            error,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, size: 22),
+              SizedBox(width: 28),
+              Text('Orders'),
+              Spacer(),
+              Text('Soon', style: TextStyle(fontSize: 11)),
+            ],
           ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Try Again'),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(28, 24, 16, 8),
+          child: Text(
+            'ACCOUNT',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
-        ],
-      ),
+        ),
+        // Profile
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.person_outline),
+          selectedIcon: Icon(Icons.person_rounded),
+          label: Text('My Profile'),
+        ),
+      ],
     );
   }
 }
@@ -168,43 +359,57 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
+  final String description;
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
+    required this.description,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return Card(
+      elevation: 0,
+      color: colors.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.5)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 28,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 12),
+            Icon(icon, color: colors.primary, size: 25),
+            const Spacer(),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
           ],
@@ -214,3 +419,77 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: colors.surfaceContainerLow,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 8,
+        ),
+        leading: CircleAvatar(
+          backgroundColor: colors.primaryContainer,
+          child: Icon(icon, color: colors.onPrimaryContainer),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _DashboardError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _DashboardError({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 36),
+            const SizedBox(height: 10),
+            const Text(
+              'Unable to load dashboard statistics.',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

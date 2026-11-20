@@ -16,11 +16,14 @@ import '../../screens/customer/home_screen.dart';
 import '../../screens/customer/order_history_screen.dart';
 import '../../screens/customer/product_detail_screen.dart';
 import '../../screens/profile/profile_screen.dart';
+import '../../screens/admin/admin_products_screen.dart';
 
 GoRouter createAppRouter({
   required ThemeMode Function() getThemeMode,
   required VoidCallback onToggleTheme,
 }) {
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+  
   return GoRouter(
     initialLocation: '/',
     routes: [
@@ -158,6 +161,49 @@ GoRouter createAppRouter({
                   }
 
                   return const AdminDashboardScreen();
+                },
+              );
+            },
+          );
+        },
+      ),
+      // ADMIN PRODUCT MANAGEMENT
+      GoRoute(
+        path: '/admin/products',
+        builder: (context, state) {
+          return Consumer(
+            builder: (context, ref, child) {
+              final user = ref.watch(currentUserProvider);
+
+              if (user == null) {
+                return const SigninScreen();
+              }
+
+              final profileAsync = ref.watch(profileProvider);
+
+              return profileAsync.when(
+                loading: () => const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (error, stackTrace) => Scaffold(
+                  body: Center(
+                    child: Text(
+                      'Unable to verify admin access: $error',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                data: (profile) {
+                  if (profile?.isAdmin != true) {
+                    return HomeScreen(
+                      themeMode: getThemeMode(),
+                      onToggleTheme: onToggleTheme,
+                    );
+                  }
+
+                  return const AdminProductsScreen();
                 },
               );
             },
