@@ -69,8 +69,6 @@ class ProductNotifier extends Notifier<ProductState> {
           schema: 'public',
           table: 'products',
           callback: (payload) {
-            // Avoid multiple unnecessary requests when several
-            // database changes happen close together.
             _realtimeDebounce?.cancel();
 
             _realtimeDebounce = Timer(
@@ -119,7 +117,7 @@ class ProductNotifier extends Notifier<ProductState> {
 
       final response = await _supabase
           .from('products')
-          .select()
+          .select('*, categories(name)')
           .gte('price', state.minPrice)
           .lte('price', state.maxPrice)
           .order('name')

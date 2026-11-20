@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../state/cart_state.dart';
 import '../../widgets/hero_banner_slider.dart';
 import '../../widgets/product_card.dart';
 
@@ -55,8 +56,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final profileAsync = ref.watch(profileProvider);
 
+    // WATCH CART STATE FOR LIVE ITEM COUNT
+    final cart = ref.watch(cartProvider);
+
     // Load products when the authentication session becomes available.
-    // This handles sessions restored after Google OAuth redirects.
     ref.listen(currentUserProvider, (previousUser, nextUser) {
       if (previousUser == null && nextUser != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -81,7 +84,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         centerTitle: true,
 
-        // Hamburger menu for signed-in users.
         leading: currentUser != null
             ? Builder(
                 builder: (context) => IconButton(
@@ -92,15 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   tooltip: 'Open Menu',
                 ),
               )
-            : IconButton(
-                icon: Icon(
-                  widget.themeMode == ThemeMode.dark
-                      ? Icons.light_mode
-                      : Icons.dark_mode,
-                ),
-                onPressed: widget.onToggleTheme,
-                tooltip: 'Toggle Theme',
-              ),
+            : null,
 
         title: SvgPicture.asset(
           'assets/Pop_Mart_logo.svg',
@@ -115,7 +109,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
 
         actions: [
-          // Theme toggle
           IconButton(
             icon: Icon(
               widget.themeMode == ThemeMode.dark
@@ -126,19 +119,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             tooltip: 'Toggle Theme',
           ),
 
-          // Guest actions
-          if (currentUser == null) ...[
-            TextButton(
-              onPressed: () => context.push('/signin'),
-              child: const Text('Sign In'),
-            ),
-            TextButton(
-              onPressed: () => context.push('/signup'),
-              child: const Text('Sign Up'),
-            ),
-          ],
-
-          // Profile action for signed-in users
           if (currentUser != null)
             IconButton(
               onPressed: () => context.push('/profile'),
@@ -146,17 +126,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               tooltip: 'My Profile',
             ),
 
-          // Cart action for customers only
+          // CART ICON WITH LIVE ITEM COUNT
           if (currentUser != null && !isAdmin)
             IconButton(
               onPressed: () => context.push('/cart'),
-              icon: const Icon(Icons.shopping_cart_outlined),
               tooltip: 'My Cart',
+              icon: Badge(
+                isLabelVisible: cart.totalItemCount > 0,
+                label: Text('${cart.totalItemCount}'),
+                child: const Icon(
+                  Icons.shopping_cart_outlined,
+                ),
+              ),
             ),
         ],
       ),
 
-      // Navigation drawer
       drawer: currentUser == null
           ? null
           : _HomeNavigationDrawer(
@@ -165,15 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
       body: currentUser == null
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Please sign in to browse products.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
+          ? const _GuestLandingPage()
           : LayoutBuilder(
               builder: (context, constraints) {
                 int crossAxisCount;
@@ -188,17 +165,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 return CustomScrollView(
                   slivers: [
-                    // Hero banner
                     const SliverToBoxAdapter(
                       child: HeroBannerSlider(),
                     ),
 
-                    // Price filter
                     const SliverToBoxAdapter(
                       child: _PriceFilter(),
                     ),
 
-                    // Section title
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
@@ -217,7 +191,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                    // Products from Supabase
                     if (productState.isLoading &&
                         productState.products.isEmpty)
                       const SliverToBoxAdapter(
@@ -294,7 +267,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
 
-                    // Pagination controls
                     SliverToBoxAdapter(
                       child: productState.products.isEmpty
                           ? const SizedBox.shrink()
@@ -359,7 +331,207 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
+// GUEST LANDING PAGE
+
+class _GuestLandingPage extends StatelessWidget {
+  const _GuestLandingPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return SizedBox.expand(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 650;
+
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  // BACKGROUND IMAGE
+                  Image.asset(
+                    'assets/afterdark.jpeg',
+                    fit: BoxFit.fitWidth,
+                    alignment: Alignment.center,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: isDark
+                            ? const Color(0xFF302B2B)
+                            : const Color(0xFFBBA69A),
+                      );
+                    },
+                  ),
+
+                  // GRADIENT FOR TEXT READABILITY
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.78),
+                          Colors.black.withValues(alpha: 0.48),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.55, 1.0],
+                      ),
+                    ),
+                  ),
+
+                  // BOTTOM GRADIENT
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // HERO CONTENT
+                  Padding(
+                    padding: EdgeInsets.all(isWide ? 48 : 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // BRAND LABEL
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: const Text(
+                            'THE WORLD OF HIRONO',
+                            style: TextStyle(
+                              color: Colors.white,
+                              letterSpacing: 1.8,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+
+                        const Spacer(),
+
+                        // HEADLINE
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isWide ? 480 : 340,
+                          ),
+                          child: Text(
+                            'A little piece\nof emotion.',
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              height: 1.05,
+                              letterSpacing: -1.5,
+                              fontSize: isWide ? 58 : 44,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // DESCRIPTION
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isWide ? 390 : 310,
+                          ),
+                          child: Text(
+                            'Discover the world of HIRONO. '
+                            'Collect meaningful characters, '
+                            'express emotions, and find the figure '
+                            'that speaks to you.',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.88),
+                              height: 1.6,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // BUTTONS
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isWide ? 340 : double.infinity,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              FilledButton(
+                                onPressed: () => context.push('/signup'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 17,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Create an account',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              OutlinedButton(
+                                onPressed: () => context.push('/signin'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(
+                                    color: Colors.white70,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text('Sign in instead'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // HOME NAVIGATION DRAWER
+
 class _HomeNavigationDrawer extends StatelessWidget {
   final bool isAdmin;
   final bool isLoadingProfile;
@@ -392,6 +564,9 @@ class _HomeNavigationDrawer extends StatelessWidget {
               context.go('/admin/products');
               break;
             case 3:
+              context.go('/admin/orders');
+              break;
+            case 4:
               context.push('/profile');
               break;
           }
@@ -411,7 +586,6 @@ class _HomeNavigationDrawer extends StatelessWidget {
       },
 
       children: [
-        // Drawer header
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
           child: Row(
@@ -454,7 +628,6 @@ class _HomeNavigationDrawer extends StatelessWidget {
           ),
         ),
 
-        // Main menu header
         const Padding(
           padding: EdgeInsets.fromLTRB(28, 8, 16, 8),
           child: Text(
@@ -467,14 +640,12 @@ class _HomeNavigationDrawer extends StatelessWidget {
           ),
         ),
 
-        // Home
         const NavigationDrawerDestination(
           icon: Icon(Icons.home_outlined),
           selectedIcon: Icon(Icons.home_rounded),
           label: Text('Home'),
         ),
 
-        // Admin-only destinations
         if (isAdmin) ...[
           const NavigationDrawerDestination(
             icon: Icon(Icons.dashboard_outlined),
@@ -488,67 +659,19 @@ class _HomeNavigationDrawer extends StatelessWidget {
             label: Text('Products'),
           ),
 
-          // Coming soon section
-          const Padding(
-            padding: EdgeInsets.fromLTRB(28, 24, 26, 8),
-            child: Text(
-              'COMING SOON',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-              ),
-            ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            selectedIcon: Icon(Icons.inventory_2_rounded),
+            label: Text('Orders'),
           ),
 
-          // Categories placeholder
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              children: [
-                Icon(Icons.category_outlined, size: 22),
-                SizedBox(width: 28),
-                Text('Categories'),
-                Spacer(),
-                Text(
-                  'Soon',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-
-          // Orders placeholder
-          const Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 8,
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.receipt_long_outlined, size: 22),
-                SizedBox(width: 28),
-                Text('Orders'),
-                Spacer(),
-                Text(
-                  'Soon',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ],
-            ),
-          ),
+          
         ],
 
         const Divider(),
 
-        // Account header
         const Padding(
-          padding: EdgeInsets.fromLTRB(
-            28,
-            12,
-            16,
-            8,
-          ),
+          padding: EdgeInsets.fromLTRB(28, 12, 16, 8),
           child: Text(
             'ACCOUNT',
             style: TextStyle(
@@ -559,14 +682,12 @@ class _HomeNavigationDrawer extends StatelessWidget {
           ),
         ),
 
-        // Profile
         const NavigationDrawerDestination(
           icon: Icon(Icons.person_outline),
           selectedIcon: Icon(Icons.person_rounded),
           label: Text('My Profile'),
         ),
 
-        // Customer-only cart
         if (!isAdmin)
           const NavigationDrawerDestination(
             icon: Icon(Icons.shopping_cart_outlined),
@@ -579,6 +700,7 @@ class _HomeNavigationDrawer extends StatelessWidget {
 }
 
 // PRICE RANGE SLIDER
+
 class _PriceFilter extends ConsumerStatefulWidget {
   const _PriceFilter();
 

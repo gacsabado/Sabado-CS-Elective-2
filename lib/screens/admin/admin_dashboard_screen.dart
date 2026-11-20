@@ -226,6 +226,9 @@ class _AdminDrawer extends StatelessWidget {
             context.go('/admin/products');
             break;
           case 3:
+            context.push('/admin/orders');
+            break;
+          case 4:
               context.push('/profile');
               break;
         }
@@ -290,48 +293,16 @@ class _AdminDrawer extends StatelessWidget {
           selectedIcon: Icon(Icons.dashboard_rounded),
           label: Text('Dashboard'),
         ),
-
         // Products - Index 2
         const NavigationDrawerDestination(
           icon: Icon(Icons.inventory_2_outlined),
           selectedIcon: Icon(Icons.inventory_2_rounded),
           label: Text('Products'),
         ),
-
-        const Padding(
-          padding: EdgeInsets.fromLTRB(28, 24, 16, 8),
-          child: Text(
-            'COMING SOON',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.category_outlined, size: 22),
-              SizedBox(width: 28),
-              Text('Categories'),
-              Spacer(),
-              Text('Soon', style: TextStyle(fontSize: 11)),
-            ],
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.receipt_long_outlined, size: 22),
-              SizedBox(width: 28),
-              Text('Orders'),
-              Spacer(),
-              Text('Soon', style: TextStyle(fontSize: 11)),
-            ],
-          ),
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.inventory_2_outlined),
+          selectedIcon: Icon(Icons.inventory_2_rounded),
+          label: Text('Orders'),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(28, 24, 16, 8),

@@ -17,6 +17,7 @@ import '../../screens/customer/order_history_screen.dart';
 import '../../screens/customer/product_detail_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/admin/admin_products_screen.dart';
+import '../../screens/admin/admin_orders_screen.dart';
 
 GoRouter createAppRouter({
   required ThemeMode Function() getThemeMode,
@@ -204,6 +205,49 @@ GoRouter createAppRouter({
                   }
 
                   return const AdminProductsScreen();
+                },
+              );
+            },
+          );
+        },
+      ),
+      // ADMIN ORDERS
+      GoRoute(
+        path: '/admin/orders',
+        builder: (context, state) {
+          return Consumer(
+            builder: (context, ref, child) {
+              final user = ref.watch(currentUserProvider);
+
+              if (user == null) {
+                return const SigninScreen();
+              }
+
+              final profileAsync = ref.watch(profileProvider);
+
+              return profileAsync.when(
+                loading: () => const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (error, stackTrace) => Scaffold(
+                  body: Center(
+                    child: Text(
+                      'Unable to verify admin access: $error',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                data: (profile) {
+                  if (profile?.isAdmin != true) {
+                    return HomeScreen(
+                      themeMode: getThemeMode(),
+                      onToggleTheme: onToggleTheme,
+                    );
+                  }
+
+                  return const AdminOrdersScreen();
                 },
               );
             },

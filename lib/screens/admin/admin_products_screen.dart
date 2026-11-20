@@ -36,7 +36,8 @@ class _AdminProductsScreenState
 
     return _products.where((product) {
       return product.name.toLowerCase().contains(query) ||
-          product.series.toLowerCase().contains(query);
+          product.series.toLowerCase().contains(query) ||
+          (product.categoryName ?? '').toLowerCase().contains(query);
     }).toList();
   }
 
@@ -63,11 +64,13 @@ class _AdminProductsScreenState
     try {
       final response = await _supabase
           .from('products')
-          .select()
+          .select('*, categories(name)')
           .order('name');
 
       final products = (response as List)
-          .map((row) => Product.fromMap(row as Map<String, dynamic>))
+          .map((row) => Product.fromMap(
+                row as Map<String, dynamic>,
+              ))
           .toList();
 
       if (!mounted) return;
@@ -98,17 +101,13 @@ class _AdminProductsScreenState
       final productNotifier = ref.read(productProvider.notifier);
 
       if (product == null) {
-        // Add product through the shared Riverpod provider.
         await productNotifier.addProduct(result);
       } else {
-        // Update product through the shared Riverpod provider.
         await productNotifier.updateProduct(result);
       }
 
-      // Refresh the complete admin product list.
       await _loadProducts();
 
-      // Refresh dashboard statistics.
       ref.invalidate(adminDashboardProvider);
 
       if (!mounted) return;
@@ -158,15 +157,12 @@ class _AdminProductsScreenState
     if (confirmed != true) return;
 
     try {
-      // Delete product through the shared Riverpod provider.
       await ref
           .read(productProvider.notifier)
           .deleteProduct(product.id);
 
-      // Refresh the complete admin product list.
       await _loadProducts();
 
-      // Refresh dashboard statistics.
       ref.invalidate(adminDashboardProvider);
 
       if (!mounted) return;
@@ -274,7 +270,7 @@ class _AdminProductsScreenState
                     setState(() => _searchQuery = value);
                   },
                   decoration: InputDecoration(
-                    hintText: 'Search products or series...',
+                    hintText: 'Search products, series, or categories...',
                     prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -357,8 +353,6 @@ class _ProductsAdminDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     final selectedIndex = switch (currentRoute) {
       '/admin' => 1,
       '/admin/products' => 2,
@@ -381,6 +375,9 @@ class _ProductsAdminDrawer extends StatelessWidget {
             context.go('/admin/products');
             break;
           case 3:
+            context.push('/admin/orders');
+            break;
+          case 4:
             context.push('/profile');
             break;
         }
@@ -394,12 +391,12 @@ class _ProductsAdminDrawer extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: colors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   Icons.storefront_rounded,
-                  color: colors.onPrimary,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -446,40 +443,10 @@ class _ProductsAdminDrawer extends StatelessWidget {
           selectedIcon: Icon(Icons.inventory_2_rounded),
           label: Text('Products'),
         ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(28, 24, 16, 8),
-          child: Text(
-            'COMING SOON',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.category_outlined, size: 22),
-              SizedBox(width: 28),
-              Text('Categories'),
-              Spacer(),
-              Text('Soon', style: TextStyle(fontSize: 11)),
-            ],
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.receipt_long_outlined, size: 22),
-              SizedBox(width: 28),
-              Text('Orders'),
-              Spacer(),
-              Text('Soon', style: TextStyle(fontSize: 11)),
-            ],
-          ),
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.inventory_2_outlined),
+          selectedIcon: Icon(Icons.inventory_2_rounded),
+          label: Text('Orders'),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(28, 24, 16, 8),
@@ -620,7 +587,18 @@ class _ProductTile extends StatelessWidget {
                   if (product.series.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(
-                      product.series,
+                      'Series: ${product.series}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  if ((product.categoryName ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Category: ${product.categoryName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -630,7 +608,7 @@ class _ProductTile extends StatelessWidget {
                   ],
                   const SizedBox(height: 8),
                   Text(
-                    '₱${product.price.toStringAsFixed(2)}',
+                    '\$${product.price.toStringAsFixed(2)}',
                     style: theme.textTheme.titleSmall?.copyWith(
                       color: colors.primary,
                       fontWeight: FontWeight.w800,
@@ -781,6 +759,13 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   late final TextEditingController _imageController;
   late final TextEditingController _descriptionController;
 
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategoryId;
+  int _categoryVersion = 0;
+  bool _isLoadingCategories = true;
+  bool _isAddingCategory = false;
+  String? _categoryError;
+
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
   bool _isSaving = false;
@@ -810,6 +795,10 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _descriptionController = TextEditingController(
       text: product?.description ?? '',
     );
+
+    _selectedCategoryId = product?.categoryId;
+
+    _loadCategories();
   }
 
   @override
@@ -822,6 +811,111 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     _descriptionController.dispose();
     super.dispose();
   }
+
+  Future<void> _loadCategories() async {
+    try {
+      final response = await _supabase
+          .from('categories')
+          .select('id, name')
+          .order('name');
+
+      if (!mounted) return;
+
+      final categories =
+          List<Map<String, dynamic>>.from(response);
+
+      final existingCategoryId = _selectedCategoryId;
+
+      setState(() {
+        _categories = categories;
+        _isLoadingCategories = false;
+        _categoryError = null;
+
+        if (existingCategoryId != null &&
+            !categories.any(
+              (category) =>
+                  category['id'].toString() == existingCategoryId,
+            )) {
+          _selectedCategoryId = null;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingCategories = false;
+        _categoryError = e.toString();
+      });
+    }
+  }
+  
+  Future<void> _showAddCategoryDialog() async {
+    final categoryDetails = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) => const _AddCategoryDialog(),
+    );
+
+    if (categoryDetails == null || !mounted) return;
+
+    setState(() {
+      _isAddingCategory = true;
+    });
+
+    try {
+      final response = await _supabase
+          .from('categories')
+          .insert({
+            'name': categoryDetails['name'],
+            'description': categoryDetails['description'],
+          })
+          .select('id, name')
+          .single();
+
+      if (!mounted) return;
+
+      final newCategory = Map<String, dynamic>.from(response);
+
+      setState(() {
+        _categories.add(newCategory);
+
+        _categories.sort(
+          (a, b) => a['name']
+              .toString()
+              .toLowerCase()
+              .compareTo(
+                b['name'].toString().toLowerCase(),
+              ),
+        );
+
+        _selectedCategoryId = newCategory['id'].toString();
+        _categoryVersion++;
+        _isAddingCategory = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${newCategory['name']} category added successfully.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isAddingCategory = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to add category: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
 
   Future<void> _pickImage() async {
     try {
@@ -912,12 +1006,10 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     final fileName =
         'product_${DateTime.now().microsecondsSinceEpoch}.$extension';
 
-    final storagePath = fileName;
-
     await _supabase.storage
         .from('product-images')
         .uploadBinary(
-          storagePath,
+          fileName,
           bytes,
           fileOptions: FileOptions(
             contentType: _getContentType(extension),
@@ -927,11 +1019,35 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
 
     return _supabase.storage
         .from('product-images')
-        .getPublicUrl(storagePath);
+        .getPublicUrl(fileName);
+  }
+
+  void _showCategoryError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please make sure categories are loaded.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _submit() async {
+    if (_isLoadingCategories || _categoryError != null) {
+      _showCategoryError();
+      return;
+    }
+
+    if (_categories.isEmpty) {
+      _showCategoryError();
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedCategoryId == null) {
+      _showCategoryError();
+      return;
+    }
 
     setState(() {
       _isSaving = true;
@@ -941,16 +1057,21 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
     try {
       String imageUrl = _imageController.text.trim();
 
-      // Upload a newly selected image.
-      // If no new image was selected, keep the existing image URL.
       if (_selectedImageBytes != null) {
         imageUrl = await _uploadImage();
       }
+
+      final selectedCategory = _categories.firstWhere(
+        (category) =>
+            category['id'].toString() == _selectedCategoryId,
+      );
 
       final product = Product(
         id: widget.product?.id ?? '',
         name: _nameController.text.trim(),
         series: _seriesController.text.trim(),
+        categoryId: _selectedCategoryId,
+        categoryName: selectedCategory['name'].toString(),
         price: double.parse(_priceController.text.trim()),
         imageUrl: imageUrl,
         description: _descriptionController.text.trim(),
@@ -965,7 +1086,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
 
       setState(() {
         _isSaving = false;
-        _imageError = 'Unable to upload image: $e';
+        _imageError = 'Unable to save product: $e';
       });
     }
   }
@@ -1002,10 +1123,137 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                 TextFormField(
                   controller: _seriesController,
                   decoration: const InputDecoration(
-                    labelText: 'Series / category',
-                    prefixIcon: Icon(Icons.category_outlined),
+                    labelText: 'Series *',
+                    hintText:
+                        'e.g. Reshape, The Other One, Little Mischief',
+                    prefixIcon: Icon(Icons.collections_outlined),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Series is required.';
+                    }
+                    return null;
+                  },
                 ),
+                const SizedBox(height: 14),
+
+                if (_isLoadingCategories)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text('Loading categories...'),
+                      ],
+                    ),
+                  )
+                else ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey(_categoryVersion),
+                          initialValue: _selectedCategoryId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Product category *',
+                            prefixIcon: Icon(Icons.category_outlined),
+                          ),
+                          hint: Text(
+                            _categoryError != null
+                                ? 'Categories unavailable'
+                                : _categories.isEmpty
+                                    ? 'No categories yet'
+                                    : 'Select a category',
+                          ),
+                          items: _categories.map((category) {
+                            return DropdownMenuItem<String>(
+                              value: category['id'].toString(),
+                              child: Text(
+                                category['name'].toString(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: _isSaving || _categoryError != null
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _selectedCategoryId = value;
+                                  });
+                                },
+                          validator: (value) {
+                            if (_categoryError != null) {
+                              return 'Unable to load categories.';
+                            }
+
+                            if (value == null || value.isEmpty) {
+                              return 'Please select a product category.';
+                            }
+
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: _isSaving || _isAddingCategory
+                              ? null
+                              : _showAddCategoryDialog,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isAddingCategory
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text('Add'),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_categoryError != null) ...[
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _loadCategories,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry loading categories'),
+                      ),
+                    ),
+                  ],
+                ],
+
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -1017,7 +1265,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                           decimal: true,
                         ),
                         decoration: const InputDecoration(
-                          labelText: 'Price (₱) *',
+                          labelText: 'Price (\$) *',
                           prefixIcon: Icon(Icons.payments_outlined),
                         ),
                         validator: _validatePrice,
@@ -1179,6 +1427,95 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text(isEditing ? 'Save changes' : 'Add product'),
+        ),
+      ],
+    );
+  }
+}
+
+
+class _AddCategoryDialog extends StatefulWidget {
+  const _AddCategoryDialog();
+
+  @override
+  State<_AddCategoryDialog> createState() =>
+      _AddCategoryDialogState();
+}
+
+class _AddCategoryDialogState extends State<_AddCategoryDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _saveCategory() {
+    if (!_formKey.currentState!.validate()) return;
+
+    Navigator.of(context).pop({
+      'name': _nameController.text.trim(),
+      'description': _descriptionController.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add category'),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Category name *',
+                    hintText: 'e.g. Figurines, Plush Dolls',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Category name is required.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Optional category description',
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Icons.description_outlined),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _saveCategory,
+          child: const Text('Add category'),
         ),
       ],
     );

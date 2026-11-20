@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/cart_item.dart';
 import '../models/product.dart';
-import '../providers/profile_provider.dart';
 
 class CartState {
   final List<CartItem> items;
@@ -29,19 +28,11 @@ class CartNotifier extends Notifier<CartState> {
     return const CartState();
   }
 
-  // CHECK IF THE CURRENT USER IS A CUSTOMER
-  bool get _isCustomer {
-    final profile = ref.read(profileProvider).value;
-    return profile?.isCustomer ?? false;
-  }
-
-  // ADD PRODUCT TO CART: CUSTOMERS ONLY
+  // ADD PRODUCT TO CART
   void addToCart(Product product, {int quantity = 1}) {
-    if (!_isCustomer || quantity <= 0) return;
+    if (quantity <= 0) return;
 
-    final updatedItems = state.items
-        .map((item) => CartItem(product: item.product, quantity: item.quantity))
-        .toList();
+    final updatedItems = _copyItems();
 
     final index = updatedItems.indexWhere(
       (item) => item.product.id == product.id,
@@ -50,16 +41,16 @@ class CartNotifier extends Notifier<CartState> {
     if (index >= 0) {
       updatedItems[index].quantity += quantity;
     } else {
-      updatedItems.add(CartItem(product: product, quantity: quantity));
+      updatedItems.add(
+        CartItem(product: product, quantity: quantity),
+      );
     }
 
     state = CartState(items: updatedItems);
   }
 
-  // INCREMENT QUANTITY: CUSTOMERS ONLY
+  // INCREMENT QUANTITY
   void incrementQuantity(String productId) {
-    if (!_isCustomer) return;
-
     final updatedItems = _copyItems();
 
     final index = updatedItems.indexWhere(
@@ -72,10 +63,8 @@ class CartNotifier extends Notifier<CartState> {
     }
   }
 
-  // DECREMENT QUANTITY: CUSTOMERS ONLY
+  // DECREMENT QUANTITY
   void decrementQuantity(String productId) {
-    if (!_isCustomer) return;
-
     final updatedItems = _copyItems();
 
     final index = updatedItems.indexWhere(
@@ -93,25 +82,27 @@ class CartNotifier extends Notifier<CartState> {
     }
   }
 
-  // REMOVE PRODUCT: CUSTOMERS ONLY
+  // REMOVE PRODUCT
   void removeFromCart(String productId) {
-    if (!_isCustomer) return;
-
     final updatedItems = _copyItems()
       ..removeWhere((item) => item.product.id == productId);
 
     state = CartState(items: updatedItems);
   }
 
-  // CLEAR CART: ALLOWED FOR LOGOUT / RESET
+  // CLEAR CART
   void clearCart() {
     state = const CartState();
   }
 
-  // CREATE A NEW LIST WITH COPIED CART ITEMS
   List<CartItem> _copyItems() {
     return state.items
-        .map((item) => CartItem(product: item.product, quantity: item.quantity))
+        .map(
+          (item) => CartItem(
+            product: item.product,
+            quantity: item.quantity,
+          ),
+        )
         .toList();
   }
 }

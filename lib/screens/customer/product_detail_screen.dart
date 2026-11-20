@@ -17,7 +17,8 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
       _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
+class _ProductDetailScreenState
+    extends ConsumerState<ProductDetailScreen> {
   int _quantity = 1;
   bool _isAdding = false;
 
@@ -36,7 +37,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 
   void _handleAddToCart() {
-    // Only customers are allowed to add products to their cart.
     final profile = ref.read(profileProvider).value;
 
     if (profile == null || !profile.isCustomer) {
@@ -47,33 +47,39 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       _isAdding = true;
     });
 
-    ref
-        .read(cartProvider.notifier)
-        .addToCart(widget.product, quantity: _quantity);
+    ref.read(cartProvider.notifier).addToCart(
+          widget.product,
+          quantity: _quantity,
+        );
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.hideCurrentSnackBar();
+
+    messenger.showSnackBar(
       SnackBar(
         showCloseIcon: true,
-        content: Text('${widget.product.name} (x$_quantity) added to cart!'),
+        content: Text(
+          '${widget.product.name} (x$_quantity) added to cart!',
+        ),
         duration: const Duration(seconds: 3),
         action: SnackBarAction(
           label: 'VIEW CART',
           onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            context.push('/cart');
+            messenger.hideCurrentSnackBar();
+            router.push('/cart');
           },
         ),
       ),
     );
 
     Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _isAdding = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _isAdding = false;
+      });
     });
   }
 
@@ -83,8 +89,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final cart = ref.watch(cartProvider);
     final profileAsync = ref.watch(profileProvider);
 
-    // Hide shopping controls unless the user's customer profile is loaded.
     final isCustomer = profileAsync.value?.isCustomer ?? false;
+
+    // DETECT WHETHER IMAGE IS A NETWORK URL OR LOCAL ASSET
+    final imageUrl = widget.product.imageUrl.trim();
+
+    final isNetworkImage =
+        imageUrl.startsWith('https://') ||
+        imageUrl.startsWith('http://');
 
     return Scaffold(
       appBar: AppBar(
@@ -114,17 +126,52 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             AspectRatio(
               aspectRatio: 1.1,
               child: Container(
+                width: double.infinity,
                 color: theme.colorScheme.surfaceContainerHighest,
-                child: Image.asset(
-                  widget.product.imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.image,
-                    size: 60,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                child: imageUrl.isEmpty
+                    ? Icon(
+                        Icons.image_not_supported_outlined,
+                        size: 60,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )
+                    : isNetworkImage
+                        ? Image.network(
+                            imageUrl,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (
+                              context,
+                              child,
+                              loadingProgress,
+                            ) {
+                              if (loadingProgress == null) {
+                                return child;
+                              }
+
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.broken_image_outlined,
+                                size: 60,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              );
+                            },
+                          )
+                        : Image.asset(
+                            imageUrl,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.broken_image_outlined,
+                                size: 60,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              );
+                            },
+                          ),
               ),
             ),
 
@@ -140,6 +187,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 6),
 
                   Text(
@@ -148,6 +196,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 8),
 
                   Text(
@@ -170,6 +219,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                         const SizedBox(width: 16),
 
                         Container(
@@ -213,6 +263,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         ),
                       ],
                     ),
+
                     const Divider(height: 24),
                   ],
 
@@ -222,11 +273,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 8),
 
                   Text(
                     widget.product.description,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
