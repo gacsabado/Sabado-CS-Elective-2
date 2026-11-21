@@ -1,259 +1,115 @@
-
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/mock_data.dart';
-import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../screens/admin/admin_dashboard_screen.dart';
+import '../../screens/admin/admin_orders_screen.dart';
+import '../../screens/admin/admin_products_screen.dart';
+import '../../screens/admin/categories_screen.dart';
+import '../../screens/admin/product_form_screen.dart';
 import '../../screens/auth/signin_screen.dart';
 import '../../screens/auth/signup_screen.dart';
+import '../../screens/auth/splash_screen.dart';
 import '../../screens/customer/cart_screen.dart';
 import '../../screens/customer/checkout_confirmation_screen.dart';
 import '../../screens/customer/home_screen.dart';
 import '../../screens/customer/order_history_screen.dart';
 import '../../screens/customer/product_detail_screen.dart';
 import '../../screens/profile/profile_screen.dart';
-import '../../screens/admin/admin_products_screen.dart';
-import '../../screens/admin/admin_orders_screen.dart';
 
-GoRouter createAppRouter({
-  required ThemeMode Function() getThemeMode,
-  required VoidCallback onToggleTheme,
-}) {
-  GoRouter.optionURLReflectsImperativeAPIs = true;
-  
-  return GoRouter(
+/// Auth gate + role gate in one place.
+///
+/// - Signed out: only /signin and /signup.
+/// - Signed in, role still loading: /loading.
+/// - Admin: /admin/* and /profile only.
+/// - Customer: everything except /admin/*.
+///
+/// This only controls what the UI shows. The real protection is Row Level
+/// Security in the database.
+final routerProvider = Provider<GoRouter>((ref) {
+  final refresh = ValueNotifier<int>(0);
+
+  ref.listen(currentUserProvider, (_, _) => refresh.value++);
+  ref.listen(profileProvider, (_, _) => refresh.value++);
+
+  final router = GoRouter(
     initialLocation: '/',
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final location = state.matchedLocation;
+      final isAuthRoute = location == '/signin' || location == '/signup';
+
+      final user = ref.read(currentUserProvider);
+
+      if (user == null) return isAuthRoute ? null : '/signin';
+
+      final profile = ref.read(profileProvider).value;
+
+      if (profile == null) return location == '/loading' ? null : '/loading';
+
+      final home = profile.isAdmin ? '/admin' : '/';
+
+      if (isAuthRoute || location == '/loading') return home;
+
+      final inAdminArea = location.startsWith('/admin');
+
+      if (profile.isAdmin) {
+        final allowed = inAdminArea || location == '/profile';
+        return allowed ? null : home;
+      }
+
+      return inAdminArea ? home : null;
+    },
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => HomeScreen(
-          themeMode: getThemeMode(),
-          onToggleTheme: onToggleTheme,
-        ),
-      ),
-
-      GoRoute(
-        path: '/signin',
-        builder: (context, state) => const SigninScreen(),
-      ),
-
-      GoRoute(
-        path: '/signup',
-        builder: (context, state) => const SignupScreen(),
-      ),
-
+      GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
+      GoRoute(path: '/loading', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/signin', builder: (_, _) => const SigninScreen()),
+      GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
       GoRoute(
         path: '/product/:id',
-        builder: (context, state) {
-          final extraProduct = state.extra;
-
-          if (extraProduct is Product) {
-            return ProductDetailScreen(product: extraProduct);
-          }
-
-          final id = state.pathParameters['id'];
-
-          final product = hironoProducts.firstWhere(
-            (product) => product.id == id,
-            orElse: () => hironoProducts.first,
-          );
-
-          return ProductDetailScreen(product: product);
-        },
+        builder: (_, state) =>
+            ProductDetailScreen(productId: state.pathParameters['id']!),
       ),
-
+      GoRoute(path: '/cart', builder: (_, _) => const CartScreen()),
       GoRoute(
-        path: '/cart',
-        builder: (context, state) => const CartScreen(),
+        path: '/order-confirmation',
+        builder: (_, _) => const CheckoutConfirmationScreen(),
       ),
+      GoRoute(path: '/orders', builder: (_, _) => const OrderHistoryScreen()),
+      GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
 
-      GoRoute(
-        path: '/checkout',
-        builder: (context, state) {
-          return Consumer(
-            builder: (context, ref, child) {
-              final user = ref.watch(currentUserProvider);
-
-              if (user == null) {
-                return const SigninScreen();
-              }
-
-              return const CheckoutConfirmationScreen();
-            },
-          );
-        },
-      ),
-
-      GoRoute(
-        path: '/profile',
-        builder: (context, state) {
-          return Consumer(
-            builder: (context, ref, child) {
-              final user = ref.watch(currentUserProvider);
-
-              if (user == null) {
-                return const SigninScreen();
-              }
-
-              return ProfileScreen(
-                themeMode: getThemeMode(),
-                onToggleTheme: onToggleTheme,
-              );
-            },
-          );
-        },
-      ),
-
-      GoRoute(
-        path: '/orders',
-        builder: (context, state) {
-          return Consumer(
-            builder: (context, ref, child) {
-              final user = ref.watch(currentUserProvider);
-
-              if (user == null) {
-                return const SigninScreen();
-              }
-
-              return const OrderHistoryScreen();
-            },
-          );
-        },
-      ),
-
-      // ADMIN DASHBOARD
-      GoRoute(
-        path: '/admin',
-        builder: (context, state) {
-          return Consumer(
-            builder: (context, ref, child) {
-              final user = ref.watch(currentUserProvider);
-
-              if (user == null) {
-                return const SigninScreen();
-              }
-
-              final profileAsync = ref.watch(profileProvider);
-
-              return profileAsync.when(
-                loading: () => const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, stackTrace) => Scaffold(
-                  body: Center(
-                    child: Text(
-                      'Unable to verify admin access: $error',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                data: (profile) {
-                  if (profile?.isAdmin != true) {
-                    return HomeScreen(
-                      themeMode: getThemeMode(),
-                      onToggleTheme: onToggleTheme,
-                    );
-                  }
-
-                  return const AdminDashboardScreen();
-                },
-              );
-            },
-          );
-        },
-      ),
-      // ADMIN PRODUCT MANAGEMENT
+      // ADMIN
+      GoRoute(path: '/admin', builder: (_, _) => const AdminDashboardScreen()),
       GoRoute(
         path: '/admin/products',
-        builder: (context, state) {
-          return Consumer(
-            builder: (context, ref, child) {
-              final user = ref.watch(currentUserProvider);
-
-              if (user == null) {
-                return const SigninScreen();
-              }
-
-              final profileAsync = ref.watch(profileProvider);
-
-              return profileAsync.when(
-                loading: () => const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, stackTrace) => Scaffold(
-                  body: Center(
-                    child: Text(
-                      'Unable to verify admin access: $error',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                data: (profile) {
-                  if (profile?.isAdmin != true) {
-                    return HomeScreen(
-                      themeMode: getThemeMode(),
-                      onToggleTheme: onToggleTheme,
-                    );
-                  }
-
-                  return const AdminProductsScreen();
-                },
-              );
-            },
-          );
-        },
+        builder: (_, _) => const AdminProductsScreen(),
       ),
-      // ADMIN ORDERS
+      GoRoute(
+        path: '/admin/products/new',
+        builder: (_, _) => const ProductFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/products/:id/edit',
+        builder: (_, state) =>
+            ProductFormScreen(productId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/categories',
+        builder: (_, _) => const CategoriesScreen(),
+      ),
       GoRoute(
         path: '/admin/orders',
-        builder: (context, state) {
-          return Consumer(
-            builder: (context, ref, child) {
-              final user = ref.watch(currentUserProvider);
-
-              if (user == null) {
-                return const SigninScreen();
-              }
-
-              final profileAsync = ref.watch(profileProvider);
-
-              return profileAsync.when(
-                loading: () => const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, stackTrace) => Scaffold(
-                  body: Center(
-                    child: Text(
-                      'Unable to verify admin access: $error',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                data: (profile) {
-                  if (profile?.isAdmin != true) {
-                    return HomeScreen(
-                      themeMode: getThemeMode(),
-                      onToggleTheme: onToggleTheme,
-                    );
-                  }
-
-                  return const AdminOrdersScreen();
-                },
-              );
-            },
-          );
-        },
+        builder: (_, _) => const AdminOrdersScreen(),
       ),
     ],
   );
-}
+
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
+
+  return router;
+});

@@ -1,81 +1,76 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../providers/auth_provider.dart';
-import '../../state/cart_state.dart';
+import '../../core/utils/format.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/checkout_provider.dart';
+import '../../widgets/product_image.dart';
+import '../../widgets/state_views.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
+
+  Future<void> _checkout(BuildContext context, WidgetRef ref) async {
+    final ok = await ref.read(checkoutControllerProvider.notifier).placeOrder();
+
+    if (!context.mounted) return;
+
+    if (ok) {
+      context.go('/order-confirmation');
+    } else {
+      final error = ref.read(checkoutControllerProvider).error;
+      showMessage(
+        context,
+        error == null ? 'Checkout failed.' : friendlyError(error),
+        error: true,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cart = ref.watch(cartProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
+    final isPlacing = ref.watch(checkoutControllerProvider).isLoading;
     final items = cart.items;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shopping Cart'),
-      ),
+      appBar: AppBar(title: const Text('Shopping Cart')),
       body: items.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.shopping_bag_outlined,
-                    size: 80,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Your cart is empty',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/');
-                      }
-                    },
-                    child: const Text('EXPLORE PRODUCTS'),
-                  ),
-                ],
+          ? EmptyView(
+              icon: Icons.shopping_bag_outlined,
+              title: 'Your cart is empty',
+              message: 'Add some products to get started.',
+              action: ElevatedButton(
+                onPressed: () => context.go('/'),
+                child: const Text('EXPLORE PRODUCTS'),
               ),
             )
           : Column(
               children: [
                 Expanded(
-                  child: ListView.separated(
+                  child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: items.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 24),
                     itemBuilder: (context, index) {
                       final item = items[index];
 
                       return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: Container(
+                                child: SizedBox(
                                   width: 70,
                                   height: 70,
-                                  color: theme.colorScheme.surfaceContainerHighest,
-                                  child: Image.asset(
-                                    item.product.imageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.image),
+                                  child: ProductImage(
+                                    url: item.product.imageUrl,
+                                    iconSize: 28,
                                   ),
                                 ),
                               ),
@@ -86,54 +81,84 @@ class CartScreen extends ConsumerWidget {
                                   children: [
                                     Text(
                                       item.product.name,
-                                      style: theme.textTheme.titleMedium
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleSmall
                                           ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                              fontWeight: FontWeight.bold),
                                     ),
-                                    const SizedBox(height: 4),
                                     Text(
-                                      '\$${item.product.price.toStringAsFixed(2)} each',
+                                      '${formatPrice(item.product.price)} each',
                                       style: theme.textTheme.bodySmall,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Subtotal: \$${item.subtotal.toStringAsFixed(2)}',
-                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                      formatPrice(item.subtotal),
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
                                         color: theme.colorScheme.primary,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
+                                    if (item.atStockLimit)
+                                      Text(
+                                        'Max available (${item.product.stockQuantity})',
+                                        style:
+                                            theme.textTheme.labelSmall?.copyWith(
+                                          color: theme.colorScheme.error,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
-                              Row(
+                              Column(
                                 children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.remove_circle_outline,
-                                    ),
-                                    onPressed: () {
-                                      cartNotifier.decrementQuantity(
-                                        item.product.id,
-                                      );
-                                    },
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Decrease quantity',
+                                        icon: const Icon(
+                                            Icons.remove_circle_outline),
+                                        onPressed: isPlacing
+                                            ? null
+                                            : () => cartNotifier
+                                                .decrement(item.product.id),
+                                      ),
+                                      Text(
+                                        '${item.quantity}',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.bold),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Increase quantity',
+                                        icon: const Icon(
+                                            Icons.add_circle_outline),
+                                        onPressed:
+                                            isPlacing || item.atStockLimit
+                                                ? null
+                                                : () {
+                                                    final error = cartNotifier
+                                                        .increment(
+                                                            item.product.id);
+                                                    if (error != null) {
+                                                      showMessage(
+                                                          context, error,
+                                                          error: true);
+                                                    }
+                                                  },
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '${item.quantity}',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.add_circle_outline,
-                                    ),
-                                    onPressed: () {
-                                      cartNotifier.incrementQuantity(
-                                        item.product.id,
-                                      );
-                                    },
+                                  TextButton.icon(
+                                    onPressed: isPlacing
+                                        ? null
+                                        : () =>
+                                            cartNotifier.remove(item.product.id),
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 18),
+                                    label: const Text('Remove'),
                                   ),
                                 ],
                               ),
@@ -144,35 +169,32 @@ class CartScreen extends ConsumerWidget {
                     },
                   ),
                 ),
-
-                // CART SUMMARY
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, -5),
                       ),
                     ],
                   ),
                   child: SafeArea(
+                    top: false,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Total Items:',
-                              style: theme.textTheme.titleMedium,
-                            ),
+                            Text('Total items',
+                                style: theme.textTheme.titleMedium),
                             Text(
                               '${cart.totalItemCount}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -181,13 +203,12 @@ class CartScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Grand Total:',
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              'Total',
+                              style: theme.textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              '\$${cart.totalAmount.toStringAsFixed(2)}',
+                              formatPrice(cart.totalAmount),
                               style: theme.textTheme.headlineSmall?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
@@ -195,50 +216,28 @@ class CartScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-
-                        // CHECKOUT BUTTON
+                        const SizedBox(height: 4),
+                        Text(
+                          'Final prices and stock are confirmed when you check out.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              final user = ref.read(currentUserProvider);
-
-                              if (user == null) {
-                                showDialog(
-                                  context: context,
-                                  builder: (dialogContext) => AlertDialog(
-                                    title: const Text('Sign In Required'),
-                                    content: const Text(
-                                      'Unable to place order. Please sign in '
-                                      'or sign up first before proceeding '
-                                      'to checkout.',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(dialogContext);
-                                          context.push('/signup');
-                                        },
-                                        child: const Text('SIGN UP'),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          Navigator.pop(dialogContext);
-                                          context.push('/signin');
-                                        },
-                                        child: const Text('SIGN IN'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                return;
-                              }
-
-                              context.push('/checkout');
-                            },
-                            child: const Text('PROCEED TO CHECKOUT'),
+                            onPressed:
+                                isPlacing ? null : () => _checkout(context, ref),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                            ),
+                            child: isPlacing
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Text('CHECKOUT'),
                           ),
                         ),
                       ],

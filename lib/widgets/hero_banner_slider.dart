@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
+import '../data/featured_banners.dart';
 
 class HeroBannerSlider extends StatefulWidget {
   const HeroBannerSlider({super.key});

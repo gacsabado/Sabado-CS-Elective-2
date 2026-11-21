@@ -8,14 +8,12 @@ final profileServiceProvider = Provider<ProfileService>((ref) {
   return ProfileService();
 });
 
-final profileProvider = FutureProvider.autoDispose<Profile?>((ref) async {
+/// The signed-in user's profile (including role). Rebuilds when the user
+/// changes, so a new login never sees the previous user's role.
+final profileProvider = FutureProvider<Profile?>((ref) async {
   final user = ref.watch(currentUserProvider);
 
-  if (user == null) {
-    return null;
-  }
+  if (user == null) return null;
 
-  final profileService = ref.watch(profileServiceProvider);
-
-  return profileService.getProfile(user.id);
+  return ref.watch(profileServiceProvider).getProfile(user.id);
 });

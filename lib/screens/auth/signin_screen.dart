@@ -46,11 +46,8 @@ class _SigninScreenState extends ConsumerState<SigninScreen> {
     ref.invalidate(authStateProvider);
     ref.invalidate(profileProvider);
 
-    if (profile.isAdmin) {
-      context.go('/');
-    } else {
-      context.go('/');
-    }
+    // The router's auth/role gate also redirects, this just goes there first.
+    context.go(profile.isAdmin ? '/admin' : '/');
   }
 
   Future<void> _signIn() async {
