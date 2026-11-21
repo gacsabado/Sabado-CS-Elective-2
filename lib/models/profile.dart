@@ -16,12 +16,20 @@ class Profile {
   });
 
   factory Profile.fromMap(Map<String, dynamic> map) {
+    // The role name lives in `roles`; profiles only hold `role_id`.
+    final roles = map['roles'];
+    final roleName = roles is Map
+        ? roles['role']?.toString()
+        : (roles is List && roles.isNotEmpty && roles.first is Map)
+            ? (roles.first as Map)['role']?.toString()
+            : null;
+
     return Profile(
       id: map['id'].toString(),
       email: map['email'] as String?,
-      firstName: map['first_name'] as String?,
-      lastName: map['last_name'] as String?,
-      role: map['role']?.toString() ?? 'customer',
+      firstName: map['firstname'] as String?,
+      lastName: map['lastname'] as String?,
+      role: roleName ?? 'customer',
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString())
           : null,

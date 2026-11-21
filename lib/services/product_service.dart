@@ -23,7 +23,7 @@ class ProductService {
 
     final search = _sanitizeSearch(filter.search);
     if (search.isNotEmpty) {
-      query = query.or('name.ilike.%$search%,description.ilike.%$search%,series.ilike.%$search%');
+      query = query.or('name.ilike.%$search%,description.ilike.%$search%');
     }
 
     if (filter.categoryId != null) {
@@ -31,7 +31,7 @@ class ProductService {
     }
 
     if (filter.inStockOnly) {
-      query = query.gt('stock_quantity', 0);
+      query = query.gt('stock', 0);
     }
 
     final sorted = switch (filter.sort) {

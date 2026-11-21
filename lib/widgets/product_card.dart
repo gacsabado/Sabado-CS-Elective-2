@@ -23,7 +23,7 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final label = product.series.isNotEmpty ? product.series : product.categoryName;
+    final label = product.categoryName;
     final canAdd = product.isInStock && quantityInCart < product.stockQuantity;
 
     return Card(

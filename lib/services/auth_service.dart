@@ -46,7 +46,7 @@ class AuthService {
       email: email.trim(),
       password: password,
       emailRedirectTo: redirectUrl,
-      data: {'first_name': firstName.trim(), 'last_name': lastName.trim()},
+      data: {'firstname': firstName.trim(), 'lastname': lastName.trim()},
     );
   }
 

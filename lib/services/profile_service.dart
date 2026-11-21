@@ -8,7 +8,7 @@ class ProfileService {
   Future<Profile?> getProfile(String userId) async {
     final response = await _supabase
         .from('profiles')
-        .select('id, email, first_name, last_name, role, created_at')
+        .select('id, email, firstname, lastname, role_id, created_at, roles(role)')
         .eq('id', userId)
         .maybeSingle();
 

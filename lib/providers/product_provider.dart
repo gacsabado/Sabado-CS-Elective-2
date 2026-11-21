@@ -137,7 +137,6 @@ class ProductActions {
         description: product.description,
         price: product.price,
         stockQuantity: product.stockQuantity,
-        series: product.series,
         categoryId: product.categoryId,
         imageUrl: url,
       );

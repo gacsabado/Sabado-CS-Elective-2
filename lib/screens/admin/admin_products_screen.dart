@@ -34,7 +34,6 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
     return products
       .where((p) =>
           p.name.toLowerCase().contains(query) ||
-          p.series.toLowerCase().contains(query) ||
           p.categoryName.toLowerCase().contains(query))
       .toList();
   }
@@ -149,7 +148,7 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
                       controller: _searchController,
                       onChanged: (v) => setState(() => _query = v),
                       decoration: InputDecoration(
-                        hintText: 'Search by name, series or category...',
+                        hintText: 'Search by name or category...',
                         prefixIcon: const Icon(Icons.search_rounded),
                         suffixIcon: _query.isEmpty
                             ? null
@@ -301,11 +300,9 @@ class _ProductTile extends StatelessWidget {
                         style: theme.textTheme.titleSmall
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
-                      if (product.series.isNotEmpty || product.categoryName.isNotEmpty)
+                      if (product.categoryName.isNotEmpty)
                         Text(
-                          [product.categoryName, product.series]
-                              .where((s) => s.isNotEmpty)
-                              .join(' · '),
+                          product.categoryName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall

@@ -7,14 +7,17 @@ import '../models/order.dart';
 class OrderService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  static const _items = 'order_items (id, product_id, product_name, '
-      'unit_price, quantity, subtotal)';
+  // product_name is the snapshot saved at checkout; products(name) is only
+  // a fallback for old rows.
+  static const _items =
+      'order_items (id, product_id, product_name, unit_price, quantity, '
+      'products (name))';
 
   // Customer: own orders, newest first (RLS also enforces "own only").
   Future<List<Order>> getMyOrders(String userId) async {
     final rows = await _supabase
         .from('orders')
-        .select('id, order_number, user_id, total_amount, status, '
+        .select('id, user_id, total, status, '
             'created_at, $_items')
         .eq('user_id', userId)
         .order('created_at', ascending: false);
@@ -26,7 +29,7 @@ class OrderService {
   Future<List<Order>> getAllOrders() async {
     final rows = await _supabase
         .from('orders')
-        .select('id, order_number, user_id, total_amount, status, '
+        .select('id, user_id, total, status, '
             'created_at, profiles (email, first_name, last_name), $_items')
         .order('created_at', ascending: false);
 
@@ -39,7 +42,7 @@ class OrderService {
   Future<List<Order>> getAllOrders() async {
     final rows = await _supabase
         .from('orders')
-        .select('id, order_number, user_id, total_amount, status, '
+        .select('id, user_id, total, status, '
             'created_at, $_items')
         .order('created_at', ascending: false);
 
@@ -58,7 +61,7 @@ class OrderService {
     if (userIds.isNotEmpty) {
       final profiles = await _supabase
           .from('profiles')
-          .select('id, email, first_name, last_name')
+          .select('id, email, firstname, lastname')
           .inFilter('id', userIds);
 
       for (final profile in profiles) {

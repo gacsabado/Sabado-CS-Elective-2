@@ -68,7 +68,6 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
   final _picker = ImagePicker();
 
   late final TextEditingController _name;
-  late final TextEditingController _series;
   late final TextEditingController _description;
   late final TextEditingController _price;
   late final TextEditingController _stock;
@@ -91,14 +90,12 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     _description = TextEditingController(text: p?.description ?? '');
     _price = TextEditingController(text: p?.price.toString() ?? '');
     _stock = TextEditingController(text: p?.stockQuantity.toString() ?? '');
-    _series = TextEditingController(text: p?.series ?? '');
     _categoryId = p?.categoryId;
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _series.dispose();
     _description.dispose();
     _price.dispose();
     _stock.dispose();
@@ -146,6 +143,7 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     final stock = int.tryParse(value?.trim() ?? '');
     if (stock == null) return 'Enter a whole number.';
     if (stock < 0) return 'Stock cannot be negative.';
+    if (stock > 32767) return 'Stock cannot exceed 32,767.';
     return null;
   }
 
@@ -170,7 +168,6 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
             Product(
               id: widget.product?.id ?? '',
               name: _name.text.trim(),
-              series: _series.text.trim(),
               description: _description.text.trim(),
               price: double.parse(_price.text.trim()),
               stockQuantity: int.parse(_stock.text.trim()),
@@ -224,14 +221,6 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
                   ),
                   validator: _validateName,
                 ),
-                const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _series,
-                    decoration: const InputDecoration(
-                      labelText: 'Series',
-                      prefixIcon: Icon(Icons.collections_bookmark_outlined),
-                    ),
-                  ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _description,

@@ -21,7 +21,7 @@ class AdminDashboardService {
     final results = await Future.wait([
       _supabase.from('products').select('id'),
       _supabase.from('categories').select('id'),
-      _supabase.from('orders').select('total_amount, status'),
+      _supabase.from('orders').select('total, status'),
     ]);
 
     final orders = List<Map<String, dynamic>>.from(results[2]);
@@ -32,7 +32,7 @@ class AdminDashboardService {
         .fold<double>(
           0,
           (sum, order) =>
-              sum + ((order['total_amount'] as num?)?.toDouble() ?? 0),
+              sum + ((order['total'] as num?)?.toDouble() ?? 0),
         );
 
     return AdminDashboardStats(

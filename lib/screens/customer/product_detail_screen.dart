@@ -88,7 +88,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             );
           }
 
-          final label = [product.categoryName, product.series]
+          final label = [product.categoryName]
               .where((s) => s.isNotEmpty)
               .join(' · ');
 

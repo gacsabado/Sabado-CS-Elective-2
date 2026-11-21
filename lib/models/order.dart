@@ -35,7 +35,7 @@ class Order {
     String? customerEmail;
     if (profile is Map) {
       customerEmail = profile['email'] as String?;
-      final name = [profile['first_name'], profile['last_name']]
+      final name = [profile['firstname'], profile['lastname']]
           .whereType<String>()
           .where((part) => part.trim().isNotEmpty)
           .join(' ');
@@ -44,9 +44,10 @@ class Order {
 
     return Order(
       id: map['id'].toString(),
-      orderNumber: map['order_number']?.toString() ?? map['id'].toString(),
+      // orders.id (int8) doubles as the order number.
+      orderNumber: map['id'].toString(),
       userId: map['user_id']?.toString() ?? '',
-      totalAmount: (map['total_amount'] as num?)?.toDouble() ?? 0,
+      totalAmount: (map['total'] as num?)?.toDouble() ?? 0,
       status: map['status']?.toString() ?? 'pending',
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString())
