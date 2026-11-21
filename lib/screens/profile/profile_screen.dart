@@ -4,27 +4,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
-import '../../state/cart_state.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../widgets/app_back_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
-  final ThemeMode themeMode;
-  final VoidCallback onToggleTheme;
-
-  const ProfileScreen({
-    super.key,
-    required this.themeMode,
-    required this.onToggleTheme,
-  });
+  const ProfileScreen({super.key});
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     try {
-      await ref.read(authServiceProvider).signOut();
-
+      // Empty the cart first; the router then sends the user to /signin.
       ref.read(cartProvider.notifier).clearCart();
 
-      if (!context.mounted) return;
-
-      context.go('/signin');
+      await ref.read(authServiceProvider).signOut();
     } catch (error) {
       if (!context.mounted) return;
 
@@ -64,10 +56,12 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(profileProvider);
+    final themeMode = ref.watch(themeModeProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton(),
         title: const Text('My Profile'),
         centerTitle: true,
       ),
@@ -222,7 +216,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   title: const Text('Dark Mode'),
                   value: themeMode == ThemeMode.dark,
-                  onChanged: (_) => onToggleTheme(),
+                  onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
                 ),
               ),
 

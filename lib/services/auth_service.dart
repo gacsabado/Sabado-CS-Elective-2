@@ -12,6 +12,8 @@ class AuthService {
   static const String _webClientId =
       '345038281741-nie8e1ge22tqir11pv4bahe5hoqutg6m.apps.googleusercontent.com';
 
+  static bool _googleInitialized = false;
+
   // Current authenticated user
   User? get currentUser => _supabase.auth.currentUser;
 
@@ -59,13 +61,16 @@ class AuthService {
       return;
     }
 
-    // Initialize Google Sign-In
+    // Initialize Google Sign-In (must only happen once per app run)
     final googleSignIn = GoogleSignIn.instance;
 
-    await googleSignIn.initialize(
-      clientId: _iosClientId,
-      serverClientId: _webClientId,
-    );
+    if (!_googleInitialized) {
+      await googleSignIn.initialize(
+        clientId: _iosClientId,
+        serverClientId: _webClientId,
+      );
+      _googleInitialized = true;
+    }
 
     // Authenticate with Google
     final googleUser = await googleSignIn.authenticate();
@@ -76,17 +81,18 @@ class AuthService {
       throw const AuthException('Google did not return an ID token.');
     }
 
-    // Request Google access token
-    final authorization = await googleUser.authorizationClient
-        .authorizationForScopes(['email', 'profile']);
-
-    final accessToken = authorization?.accessToken;
-
-    if (accessToken == null) {
-      throw const AuthException('Google did not return an access token.');
+    // The access token is optional for Supabase; request it when available.
+    String? accessToken;
+    try {
+      final authorization = await googleUser.authorizationClient
+          .authorizationForScopes(['email', 'profile']);
+      accessToken = authorization?.accessToken;
+    } catch (_) {
+      accessToken = null;
     }
 
-    // Authenticate with Supabase
+    // Authenticate with Supabase. The profile row is created by the
+    // handle_new_user database trigger.
     await _supabase.auth.signInWithIdToken(
       provider: OAuthProvider.google,
       idToken: idToken,

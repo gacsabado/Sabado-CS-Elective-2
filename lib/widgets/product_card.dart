@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
-import '../models/product.dart';
 
-/// Stateless Widget: Displays standard product information without internal state changes.
+import '../core/utils/format.dart';
+import '../models/product.dart';
+import 'product_image.dart';
+
+/// Customer product card. Shows "Add to cart" instead of any admin control.
 class ProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
+  final VoidCallback? onAddToCart;
+  final int quantityInCart;
 
-  const ProductCard({super.key, required this.product, required this.onTap});
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+    this.onAddToCart,
+    this.quantityInCart = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final label = product.series.isNotEmpty ? product.series : product.categoryName;
+    final canAdd = product.isInStock && quantityInCart < product.stockQuantity;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -19,69 +33,90 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              color: theme.colorScheme.surfaceContainerHighest,
-              child: product.imageUrl.trim().isEmpty
-                  ? Icon(
-                      Icons.image_outlined,
-                      size: 40,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )
-                  : Image.network(
-                      product.imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.broken_image_outlined,
-                          size: 40,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        );
-                      },
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ProductImage(url: product.imageUrl),
+                  if (!product.isInStock)
+                    Container(
+                      color: Colors.black54,
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'OUT OF STOCK',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
+                ],
+              ),
             ),
-          ),
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.series.toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.secondary,
-                      fontWeight: FontWeight.bold,
+                  if (label.isNotEmpty)
+                    Text(
+                      label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colors.secondary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
                   Text(
                     product.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${product.price.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          formatPrice(product.price),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (product.isInStock && product.stockQuantity <= 5)
+                        Text(
+                          '${product.stockQuantity} left',
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(color: colors.error),
+                        ),
+                    ],
                   ),
                 ],
               ),
             ),
+            if (onAddToCart != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: canAdd ? onAddToCart : null,
+                    icon: const Icon(Icons.add_shopping_cart, size: 18),
+                    label: Text(
+                      !product.isInStock
+                          ? 'Sold out'
+                          : canAdd
+                              ? 'Add to cart'
+                              : 'Max in cart',
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

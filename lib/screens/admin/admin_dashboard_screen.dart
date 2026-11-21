@@ -1,10 +1,11 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/admin_dashboard_provider.dart';
+import '../../core/utils/format.dart';
 import '../../providers/profile_provider.dart';
+import '../../widgets/app_drawer.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -18,7 +19,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     final colors = theme.colorScheme;
 
     return Scaffold(
-      drawer: const _AdminDrawer(currentRoute: '/admin'),
+      drawer: const AppDrawer(currentRoute: '/admin'),
       appBar: AppBar(
         title: const Text(
           'Dashboard',
@@ -155,7 +156,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                             ),
                             _StatCard(
                               title: 'Total sales',
-                              value: '₱${stats.totalSales.toStringAsFixed(2)}',
+                              value: formatPrice(stats.totalSales),
                               icon: Icons.payments_outlined,
                               description: 'Recorded store sales',
                             ),
@@ -176,7 +177,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                     icon: Icons.add_box_outlined,
                     title: 'Add a product',
                     subtitle: 'Create a new item in your catalog',
-                    onTap: () => context.push('/admin/products'),
+                    onTap: () => context.push('/admin/products/new'),
                   ),
                   const SizedBox(height: 10),
                   _QuickAction(
@@ -185,143 +186,26 @@ class AdminDashboardScreen extends ConsumerWidget {
                     subtitle: 'Update prices, stock, and product details',
                     onTap: () => context.push('/admin/products'),
                   ),
+                  const SizedBox(height: 10),
+                  _QuickAction(
+                    icon: Icons.category_outlined,
+                    title: 'Manage categories',
+                    subtitle: 'Add, rename, or remove categories',
+                    onTap: () => context.push('/admin/categories'),
+                  ),
+                  const SizedBox(height: 10),
+                  _QuickAction(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Manage orders',
+                    subtitle: 'Review customer orders and update their status',
+                    onTap: () => context.push('/admin/orders'),
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _AdminDrawer extends StatelessWidget {
-  final String currentRoute;
-
-  const _AdminDrawer({required this.currentRoute});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    final selectedIndex = switch (currentRoute) {
-      '/admin' => 1,
-      '/admin/products' => 2,
-      _ => 0,
-    };
-
-    return NavigationDrawer(
-      selectedIndex: selectedIndex,
-      onDestinationSelected: (index) {
-        Navigator.pop(context);
-
-        switch (index) {
-          case 0:
-            context.go('/');
-            break;
-          case 1:
-            context.go('/admin');
-            break;
-          case 2:
-            context.go('/admin/products');
-            break;
-          case 3:
-            context.push('/admin/orders');
-            break;
-          case 4:
-              context.push('/profile');
-              break;
-        }
-      },
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  Icons.storefront_rounded,
-                  color: colors.onPrimary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'HIRONO',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text('ADMIN MANAGEMENT'),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(28, 8, 16, 8),
-          child: Text(
-            'MAIN MENU',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-
-        // Home - Index 0
-        const NavigationDrawerDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home_rounded),
-          label: Text('Home'),
-        ),
-
-        // Dashboard - Index 1
-        const NavigationDrawerDestination(
-          icon: Icon(Icons.dashboard_outlined),
-          selectedIcon: Icon(Icons.dashboard_rounded),
-          label: Text('Dashboard'),
-        ),
-        // Products - Index 2
-        const NavigationDrawerDestination(
-          icon: Icon(Icons.inventory_2_outlined),
-          selectedIcon: Icon(Icons.inventory_2_rounded),
-          label: Text('Products'),
-        ),
-        const NavigationDrawerDestination(
-          icon: Icon(Icons.inventory_2_outlined),
-          selectedIcon: Icon(Icons.inventory_2_rounded),
-          label: Text('Orders'),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(28, 24, 16, 8),
-          child: Text(
-            'ACCOUNT',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        // Profile
-        const NavigationDrawerDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person_rounded),
-          label: Text('My Profile'),
-        ),
-      ],
     );
   }
 }

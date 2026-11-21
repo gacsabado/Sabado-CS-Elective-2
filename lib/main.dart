@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
+import 'providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,108 +20,32 @@ Future<void> main() async {
     throw StateError('Missing Supabase URL or publishable key in .env file.');
   }
 
-  // Initialize Supabase
   await Supabase.initialize(
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
   );
 
-  // Initialize Flutter application with Riverpod
-  runApp(const ProviderScope(child: PopMartApp()));
+  runApp(
+    ProviderScope(
+      // Show errors right away instead of silently retrying in the background.
+      retry: (retryCount, error) => null,
+      child: const PopMartApp(),
+    ),
+  );
 }
 
-class PopMartApp extends StatefulWidget {
+class PopMartApp extends ConsumerWidget {
   const PopMartApp({super.key});
 
   @override
-  State<PopMartApp> createState() => _PopMartAppState();
-}
-
-class _PopMartAppState extends State<PopMartApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
-
-  void _toggleTheme() {
-    setState(() {
-      _themeMode = _themeMode == ThemeMode.dark
-          ? ThemeMode.light
-          : ThemeMode.dark;
-    });
-  }
-
-  late final GoRouter _router = createAppRouter(
-    getThemeMode: () => _themeMode,
-    onToggleTheme: _toggleTheme,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    // LIGHT MODE
-    final lightTheme = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.deepOrange,
-        primary: const Color(0xFFE55322),
-        brightness: Brightness.light,
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF7F7F7),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0.5,
-      ),
-      cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFE55322),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-
-    // DARK MODE
-    final darkTheme = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.deepOrange,
-        primary: const Color(0xFFE55322),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E1E1E),
-        foregroundColor: Colors.white,
-        elevation: 0.5,
-      ),
-      cardTheme: CardThemeData(
-        color: const Color(0xFF1E1E1E),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFE55322),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'POP MART Hirono Store',
       debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: _themeMode,
-      routerConfig: _router,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ref.watch(themeModeProvider),
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }
